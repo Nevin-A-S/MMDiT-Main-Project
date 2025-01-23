@@ -147,7 +147,7 @@ class GaussianDiffusion:
         self.model_var_type = model_var_type
         self.loss_type = loss_type
 
-        print(model_var_type)
+        # print(model_var_type)
 
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)

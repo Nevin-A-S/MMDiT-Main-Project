@@ -249,7 +249,7 @@ class MMDiT(nn.Module):
 
         # cast to float32 for better accuracy
         x = x.to(torch.float32)
-        print('x_final',x.shape)
+        # print('x_final',x.shape)
         return x
 
     def forward_with_cfg(self, x, t, y, cfg_scale):

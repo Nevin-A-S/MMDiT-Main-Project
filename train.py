@@ -2,10 +2,13 @@ import argparse
 import json
 import os
 from glob import glob
+import numpy as np
 
+from PIL import Image
 import torch
+from pathlib import Path
 from diffusers.models import AutoencoderKL
-from torch.utils.data import DataLoader
+
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
@@ -17,6 +20,66 @@ from opendit.utils.data_utils import get_transforms_image
 # Enable TF32 for faster training on Ampere GPUs
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
+
+import pandas as pd
+
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+
+class ImageCaptionDataset(Dataset):
+    def __init__(self, csv_path, root_dir, transform=None):
+        """
+        Args:
+            csv_path (string): Path to the CSV file with annotations
+            root_dir (string): Base directory for image paths in CSV
+            transform (callable, optional): Optional transform to be applied on images
+        """
+        self.df = pd.read_csv(csv_path)
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        
+        img_rel_path = Path(row['File Path'].replace("\\", "/")) # Normalize to forward slashes
+        img_full_path = self.root_dir / img_rel_path
+
+        try:
+            if not img_full_path.exists():
+                raise FileNotFoundError(f"Image not found at: {img_full_path}")
+            
+        except FileNotFoundError:
+            print(FileNotFoundError)
+        image = Image.open(img_full_path).convert('RGB')
+        
+        caption = row['Caption']
+        
+        if self.transform:
+            image = self.transform(image)
+
+        return image, caption
+
+def center_crop_arr(pil_image, image_size):
+
+
+    while min(*pil_image.size) >= 2 * image_size:
+        pil_image = pil_image.resize(
+            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
+        )
+
+    scale = image_size / min(*pil_image.size)
+    pil_image = pil_image.resize(
+        tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
+    )
+
+    arr = np.array(pil_image)
+    crop_y = (arr.shape[0] - image_size) // 2
+    crop_x = (arr.shape[1] - image_size) // 2
+    return Image.fromarray(arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size])
+
 
 def requires_grad(model, flag=True):
     """Enable/disable gradients for a model's parameters."""
@@ -98,10 +161,26 @@ def main(args):
         weight_decay=0
     )
     # Setup dataset
-    dataset = CIFAR10(
-        args.data_path,
-        transform=get_transforms_image(args.image_size),
-        download=True
+    # dataset = CIFAR10(
+    #     args.data_path,
+    #     transform=get_transforms_image(args.image_size),
+    #     download=True
+    # )
+
+    transform = transforms.Compose([
+        transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+    ])
+
+    csv_path = "datasets/anime/image_labels.csv"
+    root_dir = "datasets/anime"  
+
+    dataset = ImageCaptionDataset(
+    csv_path=csv_path,
+    root_dir=root_dir,
+    transform=transform
     )
     
     dataloader = DataLoader(
@@ -110,7 +189,7 @@ def main(args):
         shuffle=True,
         drop_last=True,
         pin_memory=True,
-        num_workers=args.num_workers
+
     )
 
     print(f"Dataset contains {len(dataset):,} images ({args.data_path})")
@@ -132,13 +211,12 @@ def main(args):
                 # Get batch
                 x, y = next(iter(dataloader))
                 x = x.to(device)
-                y = y.to(device)
 
                 # VAE encode
                 with torch.no_grad():
                     x = vae.encode(x).latent_dist.sample().mul_(0.18215)
 
-                print('vae encode:', x.shape)
+                # print('vae encode:', x.shape)
 
                 # Diffusion training step
                 t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=device)
