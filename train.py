@@ -97,7 +97,6 @@ def main(args):
         lr=args.lr,
         weight_decay=0
     )
-
     # Setup dataset
     dataset = CIFAR10(
         args.data_path,

@@ -147,6 +147,8 @@ class GaussianDiffusion:
         self.model_var_type = model_var_type
         self.loss_type = loss_type
 
+        print(model_var_type)
+
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)
         self.betas = betas
@@ -808,7 +810,6 @@ class GaussianDiffusion:
             "xstart_mse": xstart_mse,
             "mse": mse,
         }
-
 
 def _extract_into_tensor(arr, timesteps, broadcast_shape):
     """
