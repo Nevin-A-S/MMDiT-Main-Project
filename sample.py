@@ -16,7 +16,7 @@ from diffusers.models import AutoencoderKL
 from torchvision.utils import save_image
 
 from opendit.diffusion import create_diffusion
-from opendit.models.dit import DiT_models
+from opendit.models.mmdit import MMDiT_models
 from opendit.models.latte import Latte_models
 from opendit.utils.download import find_model
 from opendit.vae.reconstruct import save_sample
@@ -40,16 +40,8 @@ def main(args):
 
     # Configure input size
     assert args.image_size % 8 == 0, "Image size must be divisible by 8 (for the VAE encoder)."
-    if args.use_video:
-        # Wrap the VAE in a wrapper that handles video data
-        # Use 3d patch size that is divisible by the input size
-        vae = AutoencoderKLWrapper(vae)
-        input_size = (args.num_frames, args.image_size, args.image_size)
-        for i in range(3):
-            assert input_size[i] % vae.patch_size[i] == 0, "Input size must be divisible by patch size"
-        input_size = [input_size[i] // vae.patch_size[i] for i in range(3)]
-    else:
-        input_size = args.image_size // 8
+    
+    input_size = args.image_size // 8
 
     dtype = torch.float32
     if "DiT" in args.model:
@@ -57,7 +49,7 @@ def main(args):
             assert args.use_video, "VDiT model requires video data"
         else:
             assert not args.use_video, "DiT model requires image data"
-        model_class = DiT_models[args.model]
+        model_class = MMDiT_models[args.model]
     elif "Latte" in args.model:
         assert args.use_video, "Latte model requires video data"
         model_class = Latte_models[args.model]
@@ -71,6 +63,7 @@ def main(args):
             enable_layernorm_kernel=False,
             dtype=dtype,
             text_encoder=args.text_encoder,
+            t5_text_encoder=args.t5_text_encoder,
         )
         .to(device)
         .to(dtype)
@@ -124,12 +117,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model", type=str, choices=list(DiT_models.keys()) + list(Latte_models.keys()), default="DiT-XL/2"
+        "--model", type=str, choices=list(MMDiT_models.keys()) + list(Latte_models.keys()), default="DiT-XL/2"
     )
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")
     parser.add_argument("--image_size", type=int, choices=[256, 512], default=256)
     parser.add_argument("--num_classes", type=int, default=1000)
-    parser.add_argument("--cfg_scale", type=float, default=4.0)
+    parser.add_argument("--cfg_scale", type=float, default=1.0)
     parser.add_argument("--num_sampling_steps", type=int, default=250)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--num_frames", type=int, default=16)
@@ -140,7 +133,8 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         default=None,
-        help="Optional path to a DiT checkpoint (default: auto-download a pre-trained DiT-XL/2 model).",
+        help="Optional path to a DiT checkpoint (default: auto-download a pre-trained MMDiT model).",
     )
+    parser.add_argument("--t5_text_encoder", type=str, default="google-t5/t5-small")
     args = parser.parse_args()
     main(args)
