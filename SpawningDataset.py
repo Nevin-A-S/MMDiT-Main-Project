@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from PIL import Image
+from torchvision import transforms
 
 class SpawningPD12Dataset(Dataset):
     def __init__(self, transform=None, max_images=60000):
@@ -9,7 +10,7 @@ class SpawningPD12Dataset(Dataset):
             transform (callable, optional): Optional transform to be applied on images
             max_images (int): Maximum number of images to include in the dataset
         """
-        self.dataset = load_dataset("spawning/pd12", split="train")
+        self.dataset = load_dataset("Spawning/PD12M", split="train")
         self.transform = transform
         self.max_images = min(max_images, len(self.dataset))
         
@@ -19,7 +20,6 @@ class SpawningPD12Dataset(Dataset):
     def __getitem__(self, idx):
         item = self.dataset[idx]
         
-        # Load and convert image
         image = Image.open(item['image'].convert('RGB'))
         caption = item['text']
         
@@ -27,12 +27,13 @@ class SpawningPD12Dataset(Dataset):
             image = self.transform(image)
 
         return image, caption
+if __name__ == "__main__":
+    transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+        ])    
 
-transform = transforms.Compose([
-        transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
-    ])    
-
-dataset = SpawningPD12Dataset(transform=transform, max_images=60000)
+    dataset = SpawningPD12Dataset(transform=transform, max_images=60000)
+    print(len(dataset))
