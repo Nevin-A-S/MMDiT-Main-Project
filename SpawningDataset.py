@@ -27,6 +27,7 @@ class SpawningPD12Dataset(Dataset):
             image = self.transform(image)
 
         return image, caption
+    
 if __name__ == "__main__":
     transform = transforms.Compose([
             transforms.Resize((256, 256)),
