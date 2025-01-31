@@ -167,3 +167,6 @@ coverage.xml
 # ignore data files
 datasets
 dataset
+#MSAMP
+
+MS-AMP
