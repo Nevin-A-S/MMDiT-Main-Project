@@ -1,6 +1,7 @@
 python train.py \
-    --model MMDiT-S/8 \
+    --model MMDiT-B/2 \
     --image_size 256 \
     --batch_size 32 \
     --epochs 1400 \
+    --ckpt_every 10000 \
 

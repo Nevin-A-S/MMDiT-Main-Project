@@ -306,7 +306,7 @@ def MMDiT_L_8(**kwargs):
 
 
 def MMDiT_B_2(**kwargs):
-    return MMDiT(depth=12, hidden_size=768, patch_size=2, num_heads=12, **kwargs)
+    return MMDiT(depth=20, hidden_size=768, patch_size=2, num_heads=16, **kwargs)
 
 
 def MMDiT_B_4(**kwargs):
@@ -361,7 +361,7 @@ MMDiT_models = {
     "MMDiT-L/8": MMDiT_L_8,
     "MMDiT-B/2": MMDiT_B_2,
     "MMDiT-B/4": MMDiT_B_4,
-    "MMDiT-B/8": MMDiT_B_8,
+    "MMDiT-B/8": MMDiT_B_8,  
     "MMDiT-S/2": MMDiT_S_2,
     "MMDiT-S/4": MMDiT_S_4,
     "MMDiT-S/8": MMDiT_S_8,

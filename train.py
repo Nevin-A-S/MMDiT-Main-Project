@@ -19,6 +19,10 @@ from lightning.fabric import Fabric
 from opendit.diffusion import create_diffusion
 from opendit.models.mmdit import MMDiT_models
 
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 # Enable TF32 and cuda optimizations
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -34,7 +38,7 @@ class ImageCaptionDataset(Dataset):
             transform: Optional transform to be applied on images
             cache_size: Number of images to cache in memory
         """
-        self.df = pd.read_csv(csv_path)
+        self.df = pd.read_csv(csv_path , sep=',')
         self.root_dir = Path(root_dir)
         self.transform = transform
         self.cache_size = cache_size
@@ -49,14 +53,14 @@ class ImageCaptionDataset(Dataset):
             return self.cache[idx]
 
         row = self.df.iloc[idx]
-        img_path = self.root_dir / Path(row['File Path'].replace("\\", "/"))
+        img_path = self.root_dir / Path(row['image'].replace("\\", "/"))
 
         try:
             if not img_path.exists():
                 raise FileNotFoundError(f"Image not found at: {img_path}")
             
             image = Image.open(img_path).convert('RGB')
-            caption = row['Caption']
+            caption = row['caption']
             
             if self.transform:
                 image = self.transform(image)
@@ -134,14 +138,14 @@ def main(args):
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y in pbar:
                 # VAE encode with caching
-                with torch.no_grad(), torch.amp.autocast(enabled=args.mixed_precision == "fp16"):
+                with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
                     x = vae.encode(x).latent_dist.sample().mul_(0.18215)
 
                 # Training step
                 t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
                 
                 if scaler is not None:
-                    with torch.amp.autocast():
+                    with torch.cuda.amp.autocast():
                         loss = training_step(model, x, t, y, diffusion)
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
@@ -222,6 +226,8 @@ def setup_models(args, fabric):
         eps=1e-8,
     )
     
+    print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
+
     # Setup with fabric
     model, optimizer = fabric.setup(model, optimizer)
     ema = fabric.setup_module(ema)
@@ -239,8 +245,8 @@ def setup_dataloader(args, fabric):
     ])
 
     dataset = ImageCaptionDataset(
-        csv_path="datasets/anime/image_labels.csv",
-        root_dir="datasets/anime",
+        csv_path="dataset/Flickr/captions.csv",
+        root_dir="dataset/FLickr/images",
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
     )
