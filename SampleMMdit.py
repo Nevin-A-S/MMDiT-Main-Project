@@ -72,14 +72,14 @@ def main(args):
     else:
         # Sample text prompts
         text_prompts = [
-            "a image of a girl in a blue dress",
-            "a image of two girls hugging each other girls",
-            "a image of a man in a classroom with a computer",
-            "a image of a man playing a guitar",
-            "a image of a man with a guitar",
-            "a image of two girls and a man laying on the ground",
-            "a image of a girl in a brown coat",
-            "a image of a young boy with a gun in his hand"
+            "a young boy skateboarder jumping on a platform on a skateboard",
+            "A white dog is running down a rocky beach",
+            "A boy smiles for the camera at a beach",
+            "a Man",
+            "a girl",
+            "Flower",
+            "car",
+            "hairpin"
         ]
         n = len(text_prompts)
         z = torch.randn(n, 4, input_size, input_size, device=device)
