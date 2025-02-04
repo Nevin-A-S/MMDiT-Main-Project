@@ -1,1 +1,1 @@
-python SampleMMdit.py --model MMDiT-S/8 --ckpt outputs/027-MMDiT-S-8/checkpoint_0086999.pt --image_size 256
+python SampleMMdit.py --model MMDiT-B/2 --ckpt outputs/030-MMDiT-B-2/checkpoint_0280000.pt --image_size 256
