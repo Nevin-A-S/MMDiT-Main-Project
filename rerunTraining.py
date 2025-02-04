@@ -19,7 +19,16 @@ from lightning.fabric import Fabric
 from opendit.diffusion import create_diffusion
 from opendit.models.mmdit import MMDiT_models
 
-# Keep all imports and helper classes from original file...
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Enable TF32 and cuda optimizations
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+torch.backends.cudnn.benchmark = True  # Enable cudnn autotuner
+torch.backends.cudnn.deterministic = False
+
 class ImageCaptionDataset(Dataset):
     def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
         """
@@ -115,7 +124,6 @@ def main(args):
     """Trains or resumes training of an MMDiT model with optimized performance."""
     assert torch.cuda.is_available(), "Training requires at least one GPU."
     
-    # If resuming, use the same experiment directory
     if args.resume_from:
         experiment_dir = str(Path(args.resume_from).parent)
         writer = SummaryWriter(f"{experiment_dir}/tensorboard", purge_step=0)
@@ -158,40 +166,47 @@ def main(args):
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y in pbar:
-                # Rest of the training loop remains the same...
-                with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
-                    x = vae.encode(x).latent_dist.sample().mul_(0.18215)
+                try:
+                    with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
+                        x = vae.encode(x).latent_dist.sample().mul_(0.18215)
 
-                t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
-                
-                if scaler is not None:
-                    with torch.cuda.amp.autocast():
+                    t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
+                    
+                    if scaler is not None:
+                        with torch.cuda.amp.autocast():
+                            loss = training_step(model, x, t, y, diffusion)
+                        scaler.scale(loss).backward()
+                        scaler.step(optimizer)
+                        scaler.update()
+                    else:
                         loss = training_step(model, x, t, y, diffusion)
-                    scaler.scale(loss).backward()
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss = training_step(model, x, t, y, diffusion)
-                    fabric.backward(loss)
-                    optimizer.step()
+                        fabric.backward(loss)
+                        optimizer.step()
 
-                optimizer.zero_grad(set_to_none=True)
-                update_ema(ema, model, fabric)
+                    optimizer.zero_grad(set_to_none=True)
+                    update_ema(ema, model, fabric)
 
-                loss_meter.update(loss.item())
-                global_step += 1
+                    loss_meter.update(loss.item())
+                    global_step += 1
 
-                pbar.set_postfix({
-                    "loss": f"{loss_meter.avg:.4f}",
-                    "step": global_step
-                })
+                    pbar.set_postfix({
+                        "loss": f"{loss_meter.avg:.4f}",
+                        "step": global_step
+                    })
 
-                if global_step % args.log_every == 0:
-                    writer.add_scalar("loss", loss_meter.avg, global_step)
-                    loss_meter.reset()
+                    if global_step % args.log_every == 0:
+                        writer.add_scalar("loss", loss_meter.avg, global_step)
+                        loss_meter.reset()
 
-                if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
-                    save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
+                    if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
+                        save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
+
+                except Exception as e:
+                    print(e)
+                    print(f"Error at global step : {global_step}")
+                    f = open(f"{global_step}_Error.txt", "w")
+                    f.write(f"Error at global step : {global_step} \n {e}")
+                    f.close()
 
     print("Training finished!")
 
@@ -262,8 +277,8 @@ def setup_dataloader(args, fabric):
     ])
 
     dataset = ImageCaptionDataset(
-        csv_path="dataset/Flickr/captions.csv",
-        root_dir="dataset/FLickr/images",
+        csv_path="datasets/Flickr/captions.csv",
+        root_dir="datasets/FLickr/images",
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
     )
