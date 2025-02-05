@@ -79,7 +79,11 @@ def main(args):
             "a girl",
             "Flower",
             "car",
-            "hairpin"
+            "hairpin",
+            "A little kid playing GameCube at McDonald 's",
+            "The reunion is in full swing with a moon bounce .",
+            "Two people are reading on a bench .",
+            " Runner being cheered on by the crowd ."
         ]
         n = len(text_prompts)
         z = torch.randn(n, 4, input_size, input_size, device=device)
@@ -114,7 +118,7 @@ def main(args):
     else:
         samples = vae.decode(samples / 0.18215).sample
         # Save image samples
-        save_path = Path(args.output_dir) / "samples_image"
+        save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
         save_path.mkdir(parents=True, exist_ok=True)
         for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
             image_path = save_path / f"sample_{i}.png"
