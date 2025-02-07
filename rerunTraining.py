@@ -277,8 +277,8 @@ def setup_dataloader(args, fabric):
     ])
 
     dataset = ImageCaptionDataset(
-        csv_path="datasets/Flickr/captions.csv",
-        root_dir="datasets/FLickr/images",
+        csv_path="dataset/Flickr/captions.csv",
+        root_dir="dataset/FLickr/images",
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
     )
