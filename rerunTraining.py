@@ -3,14 +3,14 @@ import json
 import os
 from glob import glob
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
 from diffusers.models import AutoencoderKL
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader , Subset
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from tqdm.auto import tqdm
@@ -33,21 +33,21 @@ class ImageCaptionDataset(Dataset):
     def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
         """
         Args:
-            csv_path: Path to the CSV file with annotations
-            root_dir: Base directory for image paths in CSV
-            transform: Optional transform to be applied on images
-            cache_size: Number of images to cache in memory
+            csv_path: Path to the CSV file with annotations.
+            root_dir: Base directory for image paths in CSV.
+            transform: Optional transform to be applied on images.
+            cache_size: Number of images to cache in memory.
         """
-        self.df = pd.read_csv(csv_path , sep=',')
+        self.df = pd.read_csv(csv_path, sep=',')
         self.root_dir = Path(root_dir)
         self.transform = transform
         self.cache_size = cache_size
-        self.cache: Dict[int, tuple] = {}  # Image cache
+        self.cache: Dict[int, Tuple] = {}  # Image cache
 
     def __len__(self) -> int:
         return len(self.df)
 
-    def __getitem__(self, idx: int) -> tuple:
+    def __getitem__(self, idx: int) -> Tuple:
         # Check cache first
         if idx in self.cache:
             return self.cache[idx]
@@ -75,6 +75,20 @@ class ImageCaptionDataset(Dataset):
             print(f"Error loading image {img_path}: {str(e)}")
             # Return a dummy sample in case of error
             return torch.zeros((3, 256, 256)), "error loading image"
+
+    @staticmethod
+    def collate_fn(batch):
+        """
+        Custom collate function that:
+         - Stacks image tensors.
+         - Leaves captions as a list of strings.
+        """
+        images, captions = zip(*batch)
+        # Stack images (assuming they are all tensors of the same shape)
+        images = torch.stack(images, dim=0)
+        # Return images as a tensor and captions as a list
+        return images, list(captions)
+    
 
 class AverageMeter:
     """Computes and stores the average and current value"""
@@ -166,6 +180,7 @@ def main(args):
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y in pbar:
+
                 try:
                     with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
                         x = vae.encode(x).latent_dist.sample().mul_(0.18215)
@@ -199,6 +214,10 @@ def main(args):
                         loss_meter.reset()
 
                     if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
+
+                        f = open(f"{global_step}_Caption.txt", "w")
+                        f.write(f"Caption at global step : {global_step} \n {y}")
+                        f.close()
                         save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
 
                 except Exception as e:
@@ -282,7 +301,8 @@ def setup_dataloader(args, fabric):
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
     )
-    
+    # small_subset = Subset(dataset, indices=list(range(500)))
+
     dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
