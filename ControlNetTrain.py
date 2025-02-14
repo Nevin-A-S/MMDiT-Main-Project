@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import cv2
 from glob import glob
 from pathlib import Path
 from typing import Dict, Tuple
@@ -62,15 +63,18 @@ class ImageCaptionDataset(Dataset):
             
             image = Image.open(img_path).convert('RGB')
             caption = row['caption']
-            
+            gray = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray, 100, 200)
+
             if self.transform:
+                edges = self.transform(edges)
                 image = self.transform(image)
 
             # Cache the result if cache isn't full
             if len(self.cache) < self.cache_size:
                 self.cache[idx] = (image, caption)
 
-            return image, caption
+            return image, caption , edges
 
         except Exception as e:
             print(f"Error loading image {img_path}: {str(e)}")
@@ -162,7 +166,7 @@ def main(args):
     start_epoch = 0
     global_step = 0
     if args.resume_from:
-        start_epoch, global_step = load_checkpoint(args.resume_from, ema, optimizer, fabric)
+        start_epoch, global_step = load_checkpoint(args.resume_from,model,ema, optimizer, fabric)
         print(f"Resuming from epoch {start_epoch}, global step {global_step}")
 
     # Setup dataset and dataloader
@@ -180,11 +184,12 @@ def main(args):
         print(f"Beginning epoch {epoch}...")
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
-            for x, y in pbar:
+            for x, y , edges in pbar:
 
                 try:
                     with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
                         x = vae.encode(x).latent_dist.sample().mul_(0.18215)
+                        edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
 
                     t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
                     
@@ -195,7 +200,7 @@ def main(args):
                         scaler.step(optimizer)
                         scaler.update()
                     else:
-                        loss = training_step(model, x, t, y, diffusion)
+                        loss = training_step(model, x, t, y, diffusion ,edges)
                         fabric.backward(loss)
                         optimizer.step()
 
@@ -260,8 +265,6 @@ def setup_models(args, fabric):
         "clip_text_encoder": args.text_encoder,
         "t5_text_encoder": args.t5_text_encoder,
     }
-    
-    # model = MMDiT_models[args.model](**model_config).to(device)
 
     model = MMdit_ControlNet(args.model ,
                              model_config ,
@@ -353,6 +356,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Add resume argument
     parser.add_argument("--resume_from", type=str, default=None, help="Path to checkpoint to resume training from")
+    parser.add_argument("--pretrained_path", type=str, default=None, help="Path to checkpoint of Pretrained Model")
     
     # Original arguments remain the same
     parser.add_argument("--model", type=str, choices=list(MMDiT_models.keys()), default="MMDiT-XL/2")

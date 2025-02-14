@@ -63,7 +63,7 @@ class MMdit_ControlNet(torch.nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
 
-        def forward(self, x, t, c , control_net_img = None):
+        def forward(self, x, t, c , edges = None):
             """
             Forward pass of DiT.
             x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
@@ -71,7 +71,7 @@ class MMdit_ControlNet(torch.nn.Module):
             c: (N,) texts -> clip embeddings tensor
             """
 
-            cx = control_net_img.to(self.dtype)
+            cx = edges.to(self.dtype)
             cx = self.x_embedder(cx) + self.pos_embed 
 
             x = x.to(self.dtype)
