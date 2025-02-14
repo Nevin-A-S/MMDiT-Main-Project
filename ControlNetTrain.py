@@ -113,9 +113,9 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 @torch.compile  
-def training_step(model, x, t, y, diffusion):
+def training_step(model, x, t, y, diffusion,edges):
     """Compiled training step for better performance"""
-    model_kwargs = dict(c=y)
+    model_kwargs = dict(c=y , edges = edges)
     loss_dict = diffusion.training_losses(model, x, t, model_kwargs)
     return loss_dict["loss"].mean()
 
