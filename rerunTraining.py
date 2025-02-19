@@ -296,10 +296,10 @@ def setup_dataloader(args, fabric):
     ])
 
     dataset = ImageCaptionDataset(
-        csv_path="dataset/Flickr/captions.csv",
-        root_dir="dataset/FLickr/images",
+        csv_path="dataset/MRI_DATASET/caption_large_cleaned_tumor.csv",
+        root_dir="",
         transform=transform,
-        cache_size=1000  # Cache 1000 images in memory
+        cache_size=10000  # Cache 1000 images in memory
     )
     # small_subset = Subset(dataset, indices=list(range(500)))
 
