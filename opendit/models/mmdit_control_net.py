@@ -69,6 +69,7 @@ class MMdit_ControlNet(torch.nn.Module):
             x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
             t: (N,) tensor of diffusion timesteps
             c: (N,) texts -> clip embeddings tensor
+            edges: (N, C, H, W) tensor of spatial inputs of the canny edge images
             """
 
             cx = edges.to(self.dtype)
