@@ -268,7 +268,7 @@ def setup_models(args, fabric):
 
     model = MMdit_ControlNet(args.model ,
                              model_config ,
-                             args.resume_from ,
+                             args.pretrained_path ,
                              fabric).to(device)
     
     if args.grad_checkpoint:
