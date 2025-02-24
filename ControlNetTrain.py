@@ -50,7 +50,6 @@ class ImageCaptionDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx: int) -> Tuple:
-        # Check cache first
         if idx in self.cache:
             return self.cache[idx]
 
@@ -65,12 +64,12 @@ class ImageCaptionDataset(Dataset):
             caption = row['caption']
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 100, 200)
+            edges_pil = Image.fromarray(edges)
 
             if self.transform:
-                edges = self.transform(edges)
+                edges = self.transform(edges_pil)
                 image = self.transform(image)
 
-            # Cache the result if cache isn't full
             if len(self.cache) < self.cache_size:
                 self.cache[idx] = (image, caption)
 
@@ -78,7 +77,6 @@ class ImageCaptionDataset(Dataset):
 
         except Exception as e:
             print(f"Error loading image {img_path}: {str(e)}")
-            # Return a dummy sample in case of error
             return torch.zeros((3, 256, 256)), "error loading image"
 
     @staticmethod
