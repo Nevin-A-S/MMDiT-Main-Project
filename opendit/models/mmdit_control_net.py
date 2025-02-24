@@ -33,7 +33,7 @@ class MMdit_ControlNet(torch.nn.Module):
         
         print("Pretrained Model Freezed Sucessfully!")
 
-        "Control Net Params"
+        # "Control Net Params"
 
         self.controlNetblocks = nn.ModuleList(
             [
@@ -47,8 +47,8 @@ class MMdit_ControlNet(torch.nn.Module):
             ]
         )
         
-        self.controlNet_img_weight = nn.Parameter(0.0, device = device)
-        self.controlNet_cc_weight = nn.Parameter(0.0, device = device)
+        self.controlNet_img_weight = nn.Parameter(0.0)
+        self.controlNet_cc_weight = nn.Parameter(0.0)
 
         self.x_embedder = PatchEmbed(self.mmditModel.input_size, self.mmditModel.patch_size, self.mmditModel.in_channels, self.mmditModel.hidden_size, bias=True)
         self.num_patches = self.x_embedder.num_patches
