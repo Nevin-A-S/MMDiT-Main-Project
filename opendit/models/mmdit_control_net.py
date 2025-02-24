@@ -71,10 +71,10 @@ class MMdit_ControlNet(torch.nn.Module):
         edges: (N, C, H, W) tensor of spatial inputs of the canny edge images
         """
         
-        cx = edges.to(self.dtype)
+        cx = edges.to(self.mmditModel.dtype)
         cx = self.x_embedder(cx) + self.pos_embed 
 
-        x = x.to(self.dtype)
+        x = x.to(self.mmditModel.dtype)
         x = self.mmditModel.x_embedder(x) + self.mmditModel.pos_embed  # (N, T, D), where T = H * W / patch_size ** 2
 
         t = self.mmditModel.t_embedder(t, dtype=x.dtype)  # (N, D)
