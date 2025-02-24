@@ -277,7 +277,7 @@ def setup_models(args, fabric):
     # Create EMA model
     ema = MMdit_ControlNet(args.model ,
                              model_config ,
-                             "/mnt/i/main_project_linux/OpenMMDiT/outputs/027-MMDiT-S-8/checkpoint_0720000.pt" ,
+                             args.pretrained_path ,
                              fabric).to(device)
     ema.load_state_dict(model.state_dict())
     ema.requires_grad_(False)
