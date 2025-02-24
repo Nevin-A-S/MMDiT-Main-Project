@@ -296,7 +296,7 @@ def setup_dataloader(args, fabric):
     ])
 
     dataset = ImageCaptionDataset(
-        csv_path="dataset/MRI_DATASET/caption_large_cleaned_tumor.csv",
+        csv_path="dataset/MRI_DATASET/all_data_combined.csv",
         root_dir="",
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
