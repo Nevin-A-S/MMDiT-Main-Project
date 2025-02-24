@@ -67,8 +67,9 @@ class ImageCaptionDataset(Dataset):
             
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
             edges = cv2.Canny(gray, 100, 200)
+            edges_rgb = np.stack([edges, edges, edges], axis=2)
             
-            edges_pil = Image.fromarray(edges)
+            edges_pil = Image.fromarray(edges_rgb)
 
             if self.transform:
                 image_transformed = self.transform(image)
