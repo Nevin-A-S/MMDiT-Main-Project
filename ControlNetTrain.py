@@ -195,52 +195,52 @@ def main(args):
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y , edges in pbar:
 
-                try:
-                    with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
-                        x = vae.encode(x).latent_dist.sample().mul_(0.18215)
-                        edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
+                # try:
+                with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
+                    x = vae.encode(x).latent_dist.sample().mul_(0.18215)
+                    edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
 
-                    t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
-                    
-                    if scaler is not None:
-                        with torch.cuda.amp.autocast():
-                            loss = training_step(model, x, t, y, diffusion)
-                        scaler.scale(loss).backward()
-                        scaler.step(optimizer)
-                        scaler.update()
-                    else:
-                        loss = training_step(model, x, t, y, diffusion ,edges)
-                        fabric.backward(loss)
-                        optimizer.step()
+                t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
+                
+                if scaler is not None:
+                    with torch.cuda.amp.autocast():
+                        loss = training_step(model, x, t, y, diffusion)
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss = training_step(model, x, t, y, diffusion ,edges)
+                    fabric.backward(loss)
+                    optimizer.step()
 
-                    optimizer.zero_grad(set_to_none=True)
-                    update_ema(ema, model, fabric)
+                optimizer.zero_grad(set_to_none=True)
+                update_ema(ema, model, fabric)
 
-                    loss_meter.update(loss.item())
-                    global_step += 1
+                loss_meter.update(loss.item())
+                global_step += 1
 
-                    pbar.set_postfix({
-                        "loss": f"{loss_meter.avg:.4f}",
-                        "step": global_step
-                    })
+                pbar.set_postfix({
+                    "loss": f"{loss_meter.avg:.4f}",
+                    "step": global_step
+                })
 
-                    if global_step % args.log_every == 0:
-                        writer.add_scalar("loss", loss_meter.avg, global_step)
-                        loss_meter.reset()
+                if global_step % args.log_every == 0:
+                    writer.add_scalar("loss", loss_meter.avg, global_step)
+                    loss_meter.reset()
 
-                    if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
+                if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
 
-                        f = open(f"{global_step}_Caption.txt", "w")
-                        f.write(f"Caption at global step : {global_step} \n {y}")
-                        f.close()
-                        save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
-
-                except Exception as e:
-                    print(e)
-                    print(f"Error at global step : {global_step}")
-                    f = open(f"{global_step}_Error.txt", "w")
-                    f.write(f"Error at global step : {global_step} \n {e}")
+                    f = open(f"{global_step}_Caption.txt", "w")
+                    f.write(f"Caption at global step : {global_step} \n {y}")
                     f.close()
+                    save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
+
+                # except Exception as e:
+                #     print(e)
+                #     print(f"Error at global step : {global_step}")
+                #     f = open(f"{global_step}_Error.txt", "w")
+                #     f.write(f"Error at global step : {global_step} \n {e}")
+                #     f.close()
 
     print("Training finished!")
 
