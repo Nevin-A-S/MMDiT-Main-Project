@@ -63,7 +63,7 @@ class ImageCaptionDataset(Dataset):
             
             image = Image.open(img_path).convert('RGB')
             caption = row['caption']
-            gray = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 100, 200)
 
             if self.transform:
@@ -268,7 +268,7 @@ def setup_models(args, fabric):
 
     model = MMdit_ControlNet(args.model ,
                              model_config ,
-                             "/mnt/i/main_project_linux/OpenMMDiT/outputs/027-MMDiT-S-8/checkpoint_0720000.pt" ,
+                             args.resume_from ,
                              fabric).to(device)
     
     if args.grad_checkpoint:
