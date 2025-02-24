@@ -62,22 +62,32 @@ class ImageCaptionDataset(Dataset):
             
             image = Image.open(img_path).convert('RGB')
             caption = row['caption']
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            
+            image_np = np.array(image)
+            
+            gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
             edges = cv2.Canny(gray, 100, 200)
+            
             edges_pil = Image.fromarray(edges)
 
             if self.transform:
-                edges = self.transform(edges_pil)
-                image = self.transform(image)
+                image_transformed = self.transform(image)
+                edges_transformed = self.transform(edges_pil)
+            else:
+                image_transformed = image
+                edges_transformed = edges_pil
 
+            result = (image_transformed, caption, edges_transformed)
+            
             if len(self.cache) < self.cache_size:
-                self.cache[idx] = (image, caption)
+                self.cache[idx] = result
 
-            return image, caption , edges
+            return result
 
         except Exception as e:
             print(f"Error loading image {img_path}: {str(e)}")
-            return torch.zeros((3, 256, 256)), "error loading image"
+            # Return appropriate tensors and ensure 3 items in tuple
+            return torch.zeros((3, 256, 256)), "error loading image", torch.zeros((1, 256, 256))
 
     @staticmethod
     def collate_fn(batch):
