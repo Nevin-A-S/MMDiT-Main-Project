@@ -7,7 +7,8 @@ import pandas as pd
 from PIL import Image
 from pathlib import Path
 from typing import Dict, Tuple
-from torch.utils.data import Dataset
+from torchvision import transforms
+from torch.utils.data import Dataset , DataLoader
 from torchvision.utils import save_image
 from diffusers.models import AutoencoderKL
 
@@ -33,7 +34,7 @@ class ImageCaptionDataset(Dataset):
         self.root_dir = Path(root_dir)
         self.transform = transform
         self.cache_size = cache_size
-        self.cache: Dict[int, Tuple] = {}  # Image cache
+        self.cache: Dict[int, Tuple] = {}  
 
     def __len__(self) -> int:
         return len(self.df)
@@ -134,35 +135,69 @@ def main(args):
     diffusion = create_diffusion(str(args.num_sampling_steps))
 
     text_prompts =  ['Flair Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'T2-Weighted Brain MRI of a Patient with Tumour. ', 'T1-Weighted Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ', 'Flair Brain MRI of a Patient with Tumour. ']
-    n = len(text_prompts)
-    z = torch.randn(n, 4, input_size, input_size, device=device)
-    y = text_prompts * 2
 
-    z = torch.cat([z, z], 0)
-    model_kwargs = dict(c=y, cfg_scale=args.cfg_scale)
+    temp_csv_path = make_dataset(text_prompts, text_prompts)
 
-    samples = diffusion.p_sample_loop(
-        model.forward_with_cfg,
-        z.shape,
-        z,
-        clip_denoised=False,
-        model_kwargs=model_kwargs,
-        progress=True,
-        device=device
+    transform = transforms.Compose([
+        transforms.Resize((args.image_size,args.image_size)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+    ])
+
+    dataset = ImageCaptionDataset(
+        csv_path=temp_csv_path,
+        root_dir="",
+        transform=transform,
+        cache_size=1000  
     )
-    samples, _ = samples.chunk(2, dim=0) 
 
-    samples = vae.decode(samples / 0.18215).sample
+    dataloader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=True,
+        prefetch_factor=2,
+        persistent_workers=True
+    )
 
-    save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
-    save_path.mkdir(parents=True, exist_ok=True)
-    for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
-        image_path = save_path / f"sample_{global_count}.png"
-        save_image(sample, image_path, normalize=True, value_range=(-1, 1))
-        prompt_path = save_path / f"sample_{global_count}_prompt.txt"
-        prompt_path.write_text(prompt)
-        print(f"Saved image sample to {image_path}")
-        global_count += 1
+    for i, (_, captions , edges) in enumerate(dataloader):
+        
+        with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
+
+                        edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
+
+                        n = len(captions)
+                        z = torch.randn(n, 4, input_size, input_size, device=device)
+                        y = text_prompts * 2
+
+                        z = torch.cat([z, z], 0)
+                        model_kwargs = dict(c=y, cfg_scale=args.cfg_scale,edges=edges)
+
+                        samples = diffusion.p_sample_loop(
+                            model.forward_with_cfg,
+                            z.shape,
+                            z,
+                            clip_denoised=False,
+                            model_kwargs=model_kwargs,
+                            progress=True,
+                            device=device
+                        )
+                        samples, _ = samples.chunk(2, dim=0) 
+
+                        samples = vae.decode(samples / 0.18215).sample
+
+                        save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
+                        save_path.mkdir(parents=True, exist_ok=True)
+                        for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
+                            image_path = save_path / f"sample_{global_count}.png"
+                            save_image(sample, image_path, normalize=True, value_range=(-1, 1))
+                            prompt_path = save_path / f"sample_{global_count}_prompt.txt"
+                            prompt_path.write_text(prompt)
+                            print(f"Saved image sample to {image_path}")
+                            global_count += 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
