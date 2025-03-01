@@ -1,5 +1,5 @@
 python rerunTraining.py \
-    --resume_from outputs/009-MMDiT-B-2/checkpoint_0390000.pt \
+    --resume_from outputs/009-MMDiT-B-2/checkpoint_0880000.pt \
     --model MMDiT-B/2 \
     --image_size 256 \
     --batch_size 32 \
