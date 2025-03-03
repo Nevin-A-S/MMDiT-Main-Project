@@ -8,6 +8,7 @@ from PIL import Image
 from pathlib import Path
 from typing import Dict, Tuple
 from torchvision import transforms
+from lightning.fabric import Fabric
 from torch.utils.data import Dataset , DataLoader
 from torchvision.utils import save_image
 from diffusers.models import AutoencoderKL
@@ -16,6 +17,7 @@ from opendit.utils.download import find_model
 from opendit.models.mmdit import MMDiT_models
 from opendit.diffusion import create_diffusion
 from opendit.vae.wrapper import AutoencoderKLWrapper
+from opendit.models.mmdit_control_net import MMdit_ControlNet
 
 # Enable TF32 for faster sampling
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -101,6 +103,57 @@ def make_dataset(string_args , image_paths):
     dataFrame.to_csv('temp/data.csv', index=False)
     return 'temp/data.csv'
 
+def setup_models(args, fabric):
+    """Initialize and setup all models and optimizer"""
+    device = torch.device('cuda')
+    
+    # Create VAE encoder
+    vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
+    vae.requires_grad_(False)  # Ensure VAE is frozen
+    
+    # Setup model
+    input_size = args.image_size // 8
+    model_config = {
+        "input_size": input_size,
+        "num_classes": args.num_classes,
+        "clip_text_encoder": args.text_encoder,
+        "t5_text_encoder": args.t5_text_encoder,
+    }
+
+    model = MMdit_ControlNet(args.model ,
+                             model_config ,
+                             args.pretrained_path ,
+                             fabric).to(device)
+    
+    if args.grad_checkpoint:
+        model.enable_gradient_checkpointing()
+
+    # Create EMA model
+    ema = MMdit_ControlNet(args.model ,
+                             model_config ,
+                             args.pretrained_path ,
+                             fabric).to(device)
+    ema.load_state_dict(model.state_dict())
+    ema.requires_grad_(False)
+
+    # Setup optimizer with gradient clipping
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=args.lr,
+        weight_decay=0,
+        eps=1e-8,
+    )
+    
+    print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
+
+    # Setup with fabric
+    model, optimizer = fabric.setup(model, optimizer)
+    ema = fabric.setup_module(ema)
+    vae = fabric.setup_module(vae)
+    
+    return model, ema, vae, optimizer
+
+
 def main(args):
     global_count = 0
 
@@ -125,7 +178,19 @@ def main(args):
         "use_video": args.use_video
     }
 
-    model = MMDiT_models[args.model](**model_config).to(device)
+    fabric = Fabric(
+        accelerator="cuda",
+        devices=torch.cuda.device_count(),
+        precision="bf16-mixed",
+    )
+    fabric.launch()
+
+    _, model, vae, _ = setup_models(args, fabric)
+    
+    # model = MMdit_ControlNet(args.model ,
+    #                          model_config ,
+    #                          args.pretrained_path ,
+    #                          fabric).to(device)
 
     ckpt_path = args.ckpt
     state_dict = find_model(ckpt_path)
@@ -217,7 +282,14 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         default=None,
-        help="Path to a MMDiT checkpoint",
+        help="Path to a MMDiTcontrolnet checkpoint",
     )
+    parser.add_argument(
+        "--pretrained_path",
+        type=str,
+        default=None,
+        help="Path to a MMDiT pretrained checkpoint",
+    )
+
     args = parser.parse_args()
     main(args)

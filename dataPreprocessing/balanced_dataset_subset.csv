@@ -1,0 +1,341 @@
+image,caption
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_137.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_1663.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2301.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/alzheimers_hf/train/train_1096.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_229.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1385.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/processed/543.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2194.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/alzheimers_hf/train/train_3478.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/processed/1227.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_1294.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/test/test_85.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/processed/1600.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_561.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/alzheimers_hf/train/train_3256.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1285.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/58-Flair_slice_3.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_2804.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/processed/1265.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-16075199.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_3300.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_114.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2445.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/test/test_194.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_310.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_629.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_461.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-1518683.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/2748.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_454.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_983.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_4969.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_717.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Sclerosis_processed/29-T1_slice_4.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/2998.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_1392.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_2843.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_3873.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/processed/285.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/alzheimers_hf/test/test_1189.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-130139303.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_4143.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_3805.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_4695.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-9397752.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/2319.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/58-Flair_slice_7.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-112185541.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-108243934.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_596.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-8681976.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_2153.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_5028.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_908.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_502.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_785.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1642.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1079.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_4189.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_486.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Sclerosis_processed/29-Flair_slice_6.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_3404.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_971.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_1010.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/processed/918.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-91235898.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_1343.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1497.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-43154572.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-14972965.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_1019.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_934.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Sclerosis_processed/2-T1_slice_5.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/test/test_341.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_310.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1032.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/test/test_176.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1294.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/processed/2665.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-101109902.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_965.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_166.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Sclerosis_processed/21-Flair_slice_7.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/1130.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_5117.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/processed/1709.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_3596.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_140.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_3664.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_874.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_941.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_834.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-12362674.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-5995392.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2014.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-30045271.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_4672.png,Brain MRI of a patient with Non Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3303.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_1326.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/processed/479.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_4185.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/48-Flair_slice_2.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/1617.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2740.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1392.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3732.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/processed/1885.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/processed/1913.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/processed/2972.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_37.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3122.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-128147633.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/520.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_1169.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_3762.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_861.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-19749732.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2777.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_4831.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-191100903.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/1021.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1989.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2862.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/processed/806.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/processed/1030.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_1975.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_172.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1883.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/train/train_989.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/test/test_41.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/test/test_788.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_1271.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3088.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_208.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_469.png,Brain MRI of a patient with Very Mild Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/16-Flair_slice_1.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/2980.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_644.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-118226747.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-44103322.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2524.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_246.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-13858092.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-10811055.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_860.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/processed/2873.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-6189819.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-17829590.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/20-T1_slice_6.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/56-T2_slice_9.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/19-Flair_slice_2.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/1180.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/processed/2120.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-191124786.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/15-T1_slice_9.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-63170848.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_446.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_3025.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-10563865.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_1459.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-129143120.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/29-T1_slice_2.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/2968.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/47-T2_slice_6.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/300.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_411.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_2924.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/18-T1_slice_2.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_329.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Sclerosis_processed/15-T2_slice_1.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3512.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-48350036.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/796.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/49-Flair_slice_4.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/1693.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Sclerosis_processed/48-T1_slice_2.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-220137440.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_124.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2490.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/processed/967.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2618.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/train/train_927.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-12985504.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_3675.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1008.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/processed/1891.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/49-Flair_slice_2.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2067.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2351.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Sclerosis_processed/58-T2_slice_3.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-33200457.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/test/test_316.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-108252442.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/593.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/1049.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-123785.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_466.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3296.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Sclerosis_processed/23-T1_slice_1.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_2408.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/12-Flair_slice_1.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_199.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-145108931.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1776.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Sclerosis_processed/1-T1_slice_10.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2039.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/brain_tumor_hf/train/train_492.png,Brain MRI of a patient with Giloma tumour
+dataset/MRI_DATASET/Sclerosis_processed/49-T1_slice_7.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/458.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-239170672.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-19203977.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2280.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-25157225.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/19-Flair_slice_6.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/43-T2_slice_2.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-14577880.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/1501.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-5480680.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_643.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-916218.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/24-Flair_slice_4.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/44-Flair_slice_6.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-77132448.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_631.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-15232913.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_467.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2464.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/processed/2744.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/processed/2991.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-11765489.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-150115478.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/633.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_2997.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/processed/2718.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/processed/2611.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2841.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Sclerosis_processed/22-T1_slice_1.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-7779416.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/alzheimers_hf/train/train_100.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2673.png,Brain MRI of a patient without any disease
+dataset/MRI_DATASET/alzheimers_hf/test/test_603.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/59-T2_slice_1.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/15.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/46-Flair_slice_2.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/2900.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/brain_tumor_hf/train/train_1696.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-21046962.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-267129884.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/655.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/2193.png,Brain MRI with glioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/27-T2_slice_4.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/1555.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/brain_tumor_hf/test/test_236.png,Brain MRI of a patient with Meningioma tumour
+dataset/MRI_DATASET/Sclerosis_processed/58-T1_slice_7.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_522.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1842.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_735.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/processed/529.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-109119791.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-10377838.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/6-T2_slice_2.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-20228937.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/56-Flair_slice_5.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/15-Flair_slice_6.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/54-T2_slice_6.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_4465.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-6663039.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/32-Flair_slice_1.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/23-Flair_slice_3.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_3790.png,Brain MRI of a patient with Mild Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-2979600.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/36-T2_slice_1.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/test/test_463.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Sclerosis_processed/20-Flair_slice_10.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-8691765.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/9-T2_slice_6.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/157.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/97.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/19-T2_slice_5.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_1811.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-13329337.png,T1-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/13-Flair_slice_1.png,Flair Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2942.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-26252735.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-195143186.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/252.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/1076.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-4728178.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/processed/1135.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/processed/936.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/Sclerosis_processed/41-T1_slice_4.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-33205532.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3729.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_2840.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3241.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-32228080.png,Flair Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Large_Tumor_dataset_processed/Image-18549099.png,T2-Weighted Brain MRI of a Patient with Tumour. 
+dataset/MRI_DATASET/Sclerosis_processed/44-T2_slice_4.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/brain_tumor_hf/validation/validation_1012.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/brain_tumor_hf/train/train_3382.png,Brain MRI of a patient with Pituitary tumour
+dataset/MRI_DATASET/alzheimers_hf/train/train_2090.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/processed/972.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/processed/1608.png,Brain MRI with pituitary tumor
+dataset/MRI_DATASET/processed/301.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/Sclerosis_processed/46-T1_slice_7.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/27-T2_slice_5.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/41-T2_slice_8.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/test/test_139.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/7-T2_slice_4.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/8-T1_slice_4.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/35-T1_slice_2.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/38-T1_slice_3.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/processed/531.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/63.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/575.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/449.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/processed/119.png,Brain MRI with meningioma tumor
+dataset/MRI_DATASET/alzheimers_hf/train/train_2034.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/Sclerosis_processed/57-T2_slice_3.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/40-T2_slice_4.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/18-T2_slice_1.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/32-T1_slice_4.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/37-T1_slice_9.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/9-T1_slice_6.png,T1-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/Sclerosis_processed/32-T2_slice_4.png,T2-Weighted Brain MRI of a Patient with Sclerosis.
+dataset/MRI_DATASET/alzheimers_hf/train/train_4061.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_70.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_306.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_2646.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_2642.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_1215.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1027.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_3930.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_2700.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_5093.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_250.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1852.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/test/test_476.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_1351.png,Brain MRI of a patient with Moderate Demented alzheimers
+dataset/MRI_DATASET/alzheimers_hf/train/train_4594.png,Brain MRI of a patient with Moderate Demented alzheimers
