@@ -288,6 +288,7 @@ if __name__ == "__main__":
         default=None,
         help="Path to a MMDiTcontrolnet checkpoint",
     )
+    parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["bf16", "fp16", "fp32"])
     parser.add_argument("--grad_checkpoint", action="store_true")
     parser.add_argument(
         "--pretrained_path",
