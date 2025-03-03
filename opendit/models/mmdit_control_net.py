@@ -124,7 +124,6 @@ class MMdit_ControlNet(torch.nn.Module):
         
         model_out = self.forward(combined, t_combined, c, edges_combined)
         
-        # Rest of your code...
         eps, rest = model_out[:, :3], model_out[:, 3:]
         cond_eps, uncond_eps = torch.split(eps, len(eps) // 2, dim=0)
         half_eps = uncond_eps + cfg_scale * (cond_eps - uncond_eps)
