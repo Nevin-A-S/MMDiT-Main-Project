@@ -286,6 +286,7 @@ if __name__ == "__main__":
         default=None,
         help="Path to a MMDiTcontrolnet checkpoint",
     )
+    parser.add_argument("--grad_checkpoint", action="store_true")
     parser.add_argument(
         "--pretrained_path",
         type=str,
