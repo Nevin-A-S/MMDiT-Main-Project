@@ -491,7 +491,7 @@ def main():
 
     
     # Dataset parameters
-    batch_size = 16  # Adjust based on VRAM
+    batch_size = 64  # Adjust based on VRAM
     num_workers = 4  # Adjust based on CPU cores
     
     full_dataset = ImageCaptionDataset(
@@ -533,7 +533,7 @@ def main():
     # Initialize fine-tuner
     fine_tuner = ViTFineTuner(
         model_name="google/vit-base-patch16-224-in21k",
-        learning_rate=2e-5,
+        learning_rate=3e-4,
         mixed_precision=True,
         gradient_accumulation_steps=2,  # Reduces VRAM usage
         checkpoint_dir="vit_checkpoints",
@@ -548,7 +548,7 @@ def main():
     fine_tuner.train(
         train_loader=train_loader,
         val_loader=val_loader,
-        epochs=10,
+        epochs=100,
         save_interval=1,
         eval_interval=1
     )
