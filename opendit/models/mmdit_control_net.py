@@ -104,18 +104,27 @@ class MMdit_ControlNet(torch.nn.Module):
         x = x.to(torch.float32)
         return x
 
-    def forward_with_cfg(self, x, t, c, cfg_scale,edges=None):
+    def forward_with_cfg(self, x, t, c, cfg_scale, edges=None):
         """
         Forward pass of DiT, but also batches the unconditional forward pass for classifier-free guidance.
         """
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
         half = x[: len(x) // 2]
         combined = torch.cat([half, half], dim=0)
-        model_out = self.forward(combined, t, c, edges)
-        # For exact reproducibility reasons, we apply classifier-free guidance on only
-        # three channels by default. The standard approach to cfg applies it to all channels.
-        # This can be done by uncommenting the following line and commenting-out the line following that.
-        # eps, rest = model_out[:, :self.in_channels], model_out[:, self.in_channels:]
+        
+        # Also duplicate the timesteps to match the batch size
+        t_combined = torch.cat([t, t], dim=0)
+        
+        # If edges is provided, duplicate it as well
+        if edges is not None:
+            edges_half = edges[: len(edges) // 2]
+            edges_combined = torch.cat([edges_half, edges_half], dim=0)
+        else:
+            edges_combined = None
+        
+        model_out = self.forward(combined, t_combined, c, edges_combined)
+        
+        # Rest of your code...
         eps, rest = model_out[:, :3], model_out[:, 3:]
         cond_eps, uncond_eps = torch.split(eps, len(eps) // 2, dim=0)
         half_eps = uncond_eps + cfg_scale * (cond_eps - uncond_eps)
