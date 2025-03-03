@@ -1,5 +1,6 @@
 import os
 import gc
+import cv2
 import wandb
 import torch
 import random
@@ -19,7 +20,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import ViTForImageClassification, ViTConfig, ViTImageProcessor
 
 class ImageCaptionDataset(Dataset):
-    def init(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
+    def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
         """
         Args:
             csv_path: Path to the CSV file with annotations.
@@ -33,11 +34,10 @@ class ImageCaptionDataset(Dataset):
         self.cache_size = cache_size
         self.cache: Dict[int, Tuple] = {}  # Image cache
 
-    def len(self) -> int:
+    def __len__(self) -> int:
         return len(self.df)
 
-    def getitem(self, idx: int) -> Tuple:
-        # Check cache first
+    def __getitem__(self, idx: int) -> Tuple:
         if idx in self.cache:
             return self.cache[idx]
 
@@ -47,23 +47,27 @@ class ImageCaptionDataset(Dataset):
         try:
             if not img_path.exists():
                 raise FileNotFoundError(f"Image not found at: {img_path}")
-
+            
             image = Image.open(img_path).convert('RGB')
             caption = row['caption']
 
             if self.transform:
-                image = self.transform(image)
+                image_transformed = self.transform(image)
+        
+            else:
+                image_transformed = image
 
-            # Cache the result if cache isn't full
+            result = (image_transformed, caption)
+            
             if len(self.cache) < self.cache_size:
-                self.cache[idx] = (image, caption)
+                self.cache[idx] = result
 
-            return image, caption
+            return result
 
         except Exception as e:
             print(f"Error loading image {img_path}: {str(e)}")
-            # Return a dummy sample in case of error
-            return torch.zeros((3, 256, 256)), "error loading image"
+            # Return appropriate tensors and ensure 3 items in tuple
+            return torch.zeros((3, 256, 256)), "error loading image", torch.zeros((1, 256, 256))
 
     @staticmethod
     def collate_fn(batch):
@@ -77,43 +81,7 @@ class ImageCaptionDataset(Dataset):
         images = torch.stack(images, dim=0)
         # Return images as a tensor and captions as a list
         return images, list(captions)
-
-processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
-image_mean = processor.image_mean
-image_std = processor.image_std
-size = processor.size["height"]
-del processor
-
-transform = transforms.Compose([
-    transforms.Resize((size,size)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[image_mean, image_mean, image_mean], std=[image_std, image_std, image_std], inplace=True),
-])
-
-def setup_dataloader(csv_location,root_dir,img_size,batch_size,num_workers):
-    """Setup dataset and dataloader with optimized transforms"""
-
-    dataset = ImageCaptionDataset(
-        csv_path=csv_location,
-        root_dir=root_dir,
-        transform=transform,
-        cache_size=1000  # Cache 1000 images in memory
-    )
-
-    dataloader = DataLoader(
-        dataset,
-        batch_size= batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        drop_last=True,
-        prefetch_factor=2,
-        persistent_workers=True
-    )
-
-    return dataloader
-
+    
 class ViTFineTuner:
     def __init__(
         self, 
@@ -506,47 +474,55 @@ def main():
     """
     # Setup data loaders
     from torch.utils.data import DataLoader, Subset
+
+    processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
+    image_mean = processor.image_mean
+    image_std = processor.image_std
+    size = processor.size["height"]
+    print(size)
+    del processor
+
+    transform = transforms.Compose([
+        transforms.Resize((size, size)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=image_mean, std=image_std, inplace=True),
+    ])
+
     
     # Dataset parameters
-    csv_location = "dataset/Flickr/captions.csv"
-    root_dir = "dataset/Flickr/images"
-    img_size = 224  # ViT default size
     batch_size = 16  # Adjust based on VRAM
     num_workers = 4  # Adjust based on CPU cores
     
-    # Create full dataset - Replace with your own dataset
-    # Note: For our example, we need to modify the existing dataset or create a new one for classification
-    # This is just a mockup assuming we adapt the ImageCaptionDataset for classification
     full_dataset = ImageCaptionDataset(
-        csv_path=csv_location,
-        root_dir=root_dir,
-        transform=transform,
-        cache_size=1000
-    )
+            csv_path="visionTransformer/dataset_for_training.csv",
+            root_dir="",
+            transform=transform,
+            cache_size=1000 
+        )
     
     # Create train/val split
-    train_indices, val_indices = create_train_val_split(full_dataset, val_ratio=0.2)
+    train_indices, val_indices = create_train_val_split(full_dataset, val_ratio=0.1)
     
     # Create train and validation dataloaders
     train_loader = DataLoader(
         Subset(full_dataset, train_indices),
         batch_size=batch_size,
-        sampler=SubsetSampler(train_indices),
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2,
         persistent_workers=True
     )
-    
+
     val_loader = DataLoader(
         Subset(full_dataset, val_indices),
         batch_size=batch_size,
-        sampler=SubsetSampler(val_indices),
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2,
         persistent_workers=True
     )
+
     
     # Count number of unique classes in your dataset
     # Adapt this according to how your labels are stored
