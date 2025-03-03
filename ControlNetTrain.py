@@ -349,7 +349,7 @@ def save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir):
     }
     torch.save(
         checkpoint,
-        f"{experiment_dir}/checkpoint_{global_step:07d}.pt"
+        f"{experiment_dir}/checkpoint_control_net_{global_step:07d}.pt"
     )
     print(f"Saved checkpoint at global step {global_step}")
 
