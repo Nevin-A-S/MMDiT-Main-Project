@@ -236,37 +236,38 @@ def main(args):
         
         with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
 
-                        edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
+            edges = edges.to(device)  # Add this line to move tensor to GPU
+            edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
 
-                        n = len(captions)
-                        z = torch.randn(n, 4, input_size, input_size, device=device)
-                        y = text_prompts * 2
+            n = len(captions)
+            z = torch.randn(n, 4, input_size, input_size, device=device)
+            y = text_prompts * 2
 
-                        z = torch.cat([z, z], 0)
-                        model_kwargs = dict(c=y, cfg_scale=args.cfg_scale,edges=edges)
+            z = torch.cat([z, z], 0)
+            model_kwargs = dict(c=y, cfg_scale=args.cfg_scale,edges=edges)
 
-                        samples = diffusion.p_sample_loop(
-                            model.forward_with_cfg,
-                            z.shape,
-                            z,
-                            clip_denoised=False,
-                            model_kwargs=model_kwargs,
-                            progress=True,
-                            device=device
-                        )
-                        samples, _ = samples.chunk(2, dim=0) 
+            samples = diffusion.p_sample_loop(
+                model.forward_with_cfg,
+                z.shape,
+                z,
+                clip_denoised=False,
+                model_kwargs=model_kwargs,
+                progress=True,
+                device=device
+            )
+            samples, _ = samples.chunk(2, dim=0) 
 
-                        samples = vae.decode(samples / 0.18215).sample
+            samples = vae.decode(samples / 0.18215).sample
 
-                        save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
-                        save_path.mkdir(parents=True, exist_ok=True)
-                        for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
-                            image_path = save_path / f"sample_{global_count}.png"
-                            save_image(sample, image_path, normalize=True, value_range=(-1, 1))
-                            prompt_path = save_path / f"sample_{global_count}_prompt.txt"
-                            prompt_path.write_text(prompt)
-                            print(f"Saved image sample to {image_path}")
-                            global_count += 1
+            save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
+            save_path.mkdir(parents=True, exist_ok=True)
+            for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
+                image_path = save_path / f"sample_{global_count}.png"
+                save_image(sample, image_path, normalize=True, value_range=(-1, 1))
+                prompt_path = save_path / f"sample_{global_count}_prompt.txt"
+                prompt_path.write_text(prompt)
+                print(f"Saved image sample to {image_path}")
+                global_count += 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
