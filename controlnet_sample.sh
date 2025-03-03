@@ -5,5 +5,5 @@ python SampleMMditControlnet.py \
     --batch_size 16 \
     --ckpt_every 10000 \
     --output_dir outputs/sample_control_net \
-    --ckpt \
+    --ckpt outputs/028-MMDiT-B-2/checkpoint_0070000.pt \
     --cfg 0 
