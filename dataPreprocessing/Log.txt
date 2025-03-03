@@ -1,77 +1,27 @@
-    self._engine = self._make_engine(f, self.engine)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1898, in _make_engine
-    return mapping[engine](f, **self.options)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/pandas/io/parsers/c_parser_wrapper.py", line 93, in __init__
-    self._reader = parsers.TextReader(src, **kwds)
-  File "parsers.pyx", line 581, in pandas._libs.parsers.TextReader.__cinit__
-pandas.errors.EmptyDataError: No columns to parse from file
-(py310) sct@hpcnode4:/media/sct/projects/MMDit/Project/MMDiT-Main-Project$ bash controlnet_sample.sh 
-Using bfloat16 Automatic Mixed Precision (AMP)
-Preparing Model
-clip_in_text_channels 512
-t5_in_text_channels 512
-Model Loaded Sucessfully
-Loading Checkpoint
-Loading checkpoint from outputs/009-MMDiT-B-2/checkpoint_1100000.pt
-Checkpoint Loaded Sucessfully
-Pretrained Model Freezed Sucessfully!
-Preparing Model
-clip_in_text_channels 512
-t5_in_text_channels 512
-Model Loaded Sucessfully
-Loading Checkpoint
-Loading checkpoint from outputs/009-MMDiT-B-2/checkpoint_1100000.pt
-Checkpoint Loaded Sucessfully
-Pretrained Model Freezed Sucessfully!
-Model has 1,014,622,482 parameters
-Traceback (most recent call last):
-  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 301, in <module>
-    main(args)
-  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 235, in main
-    with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
-AttributeError: 'Namespace' object has no attribute 'mixed_precision'
-(py310) sct@hpcnode4:/media/sct/projects/MMDit/Project/MMDiT-Main-Project$ bash controlnet_sample.sh 
-Using bfloat16 Automatic Mixed Precision (AMP)
-Preparing Model
-clip_in_text_channels 512
-t5_in_text_channels 512
-Model Loaded Sucessfully
-Loading Checkpoint
-Loading checkpoint from outputs/009-MMDiT-B-2/checkpoint_1100000.pt
-Checkpoint Loaded Sucessfully
-Pretrained Model Freezed Sucessfully!
-Preparing Model
-clip_in_text_channels 512
-t5_in_text_channels 512
-Model Loaded Sucessfully
-Loading Checkpoint
-Loading checkpoint from outputs/009-MMDiT-B-2/checkpoint_1100000.pt
-Checkpoint Loaded Sucessfully
-Pretrained Model Freezed Sucessfully!
-Model has 1,014,622,482 parameters
 /media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py:237: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
   with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
+  0%|                             | 0/1000 [00:00<?, ?it/s]
 Traceback (most recent call last):
-  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 304, in <module>
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 305, in <module>
     main(args)
-  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 239, in main
-    edges = vae.encode(edges).latent_dist.sample().mul_(0.18215)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/diffusers/utils/accelerate_utils.py", line 46, in wrapper
-    return method(self, *args, **kwargs)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/diffusers/models/autoencoders/autoencoder_kl.py", line 271, in encode
-    h = self.encoder(x)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/diffusers/models/autoencoders/vae.py", line 143, in forward
-    sample = self.conv_in(sample)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 554, in forward
-    return self._conv_forward(input, self.weight, self.bias)
-  File "/home/sct/anaconda3/envs/py310/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 549, in _conv_forward
-    return F.conv2d(
-RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same or input should be a MKLDNN tensor and weight is a dense tensor
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/SampleMMditControlnet.py", line 249, in main
+    samples = diffusion.p_sample_loop(
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/gaussian_diffusion.py", line 426, in p_sample_loop
+    for sample in self.p_sample_loop_progressive(
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/gaussian_diffusion.py", line 477, in p_sample_loop_progressive
+    out = self.p_sample(
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/gaussian_diffusion.py", line 380, in p_sample
+    out = self.p_mean_variance(
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/respace.py", line 82, in p_mean_variance
+    return super().p_mean_variance(self._wrap_model(model), *args, **kwargs)
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/gaussian_diffusion.py", line 259, in p_mean_variance
+    model_output = model(x, t, **model_kwargs)
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/diffusion/respace.py", line 115, in __call__
+    return self.model(x, new_ts, **kwargs)
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/models/mmdit_control_net.py", line 114, in forward_with_cfg
+    model_out = self.forward(combined, t, c, edges)
+  File "/media/sct/projects/MMDit/Project/MMDiT-Main-Project/opendit/models/mmdit_control_net.py", line 84, in forward
+    t = t + ts_proj
+RuntimeError: The size of tensor a (128) must match the size of tensor b (64) at non-singleton dimension 0
+(py310) sct@hpcnode4:/media/sct/projects/MMDit/Project/MMDiT-Main-Project$ ^C
+(py310) sct@hpcnode4:/media/sct/projects/MMDit/Project/MMDiT-Main-Project$ 
