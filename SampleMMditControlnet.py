@@ -230,6 +230,8 @@ def main(args):
         persistent_workers=True
     )
 
+    model.eval()
+    vae.eval()
     for i, (_, captions , edges) in enumerate(dataloader):
         
         with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
