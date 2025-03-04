@@ -111,13 +111,11 @@ class MMdit_ControlNet(torch.nn.Module):
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
         half = x[: len(x) // 2]
         combined = torch.cat([half, half], dim=0)
-        
-        # Also duplicate the timesteps to match the batch size
-        t_combined = torch.cat([t, t], dim=0)
+
         
         print('edge',edges.shape)
         
-        model_out = self.forward(combined, t_combined, c, edges)
+        model_out = self.forward(combined, t, c, edges)
         
         eps, rest = model_out[:, :3], model_out[:, 3:]
         cond_eps, uncond_eps = torch.split(eps, len(eps) // 2, dim=0)
