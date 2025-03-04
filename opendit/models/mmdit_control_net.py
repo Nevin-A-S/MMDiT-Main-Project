@@ -115,14 +115,9 @@ class MMdit_ControlNet(torch.nn.Module):
         # Also duplicate the timesteps to match the batch size
         t_combined = torch.cat([t, t], dim=0)
         
-        # If edges is provided, duplicate it as well
-        if edges is not None:
-            edges_half = edges[: len(edges) // 2]
-            edges_combined = torch.cat([edges_half, edges_half], dim=0)
-        else:
-            edges_combined = None
+        print('edge',edges.shape)
         
-        model_out = self.forward(combined, t_combined, c, edges_combined)
+        model_out = self.forward(combined, t_combined, c, edges)
         
         eps, rest = model_out[:, :3], model_out[:, 3:]
         cond_eps, uncond_eps = torch.split(eps, len(eps) // 2, dim=0)
