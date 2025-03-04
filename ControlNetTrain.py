@@ -317,12 +317,14 @@ def setup_dataloader(args, fabric):
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
     ])
 
+    csv = "dataset/MRI_DATASET/balanced_dataset.csv"
     dataset = ImageCaptionDataset(
-        csv_path="dataset/MRI_DATASET/balanced_dataset.csv",
+        csv_path=csv,
         root_dir="",
         transform=transform,
         cache_size=1000  # Cache 1000 images in memory
     )
+    print('Dataset Loaded from ',csv)
     # small_subset = Subset(dataset, indices=list(range(500)))
 
     dataloader = DataLoader(
