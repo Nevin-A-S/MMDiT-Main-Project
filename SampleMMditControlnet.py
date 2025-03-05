@@ -241,10 +241,15 @@ def main(args):
 
             n = len(captions)
             z = torch.randn(n, 4, input_size, input_size, device=device)
-            y = text_prompts * 2
+            y = captions * 2
 
             z = torch.cat([z, z], 0)
-            model_kwargs = dict(c=y, cfg_scale=args.cfg_scale,edges=edges)
+            edges = torch.cat([edges,edges] ,0)
+            # print('edge',edges.shape)
+            # print('z',z.shape)
+            # print('y',len(y))
+            # Keep edges as is - don't duplicate it
+            model_kwargs = dict(c=y, cfg_scale=args.cfg_scale, edges=edges)
 
             samples = diffusion.p_sample_loop(
                 model.forward_with_cfg,
@@ -261,7 +266,7 @@ def main(args):
 
             save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
             save_path.mkdir(parents=True, exist_ok=True)
-            for i, (sample, prompt) in enumerate(zip(samples, text_prompts)):
+            for i, (sample, prompt) in enumerate(zip(samples, captions)):
                 image_path = save_path / f"sample_{global_count}.png"
                 save_image(sample, image_path, normalize=True, value_range=(-1, 1))
                 prompt_path = save_path / f"sample_{global_count}_prompt.txt"

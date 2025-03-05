@@ -109,11 +109,12 @@ class MMdit_ControlNet(torch.nn.Module):
         Forward pass of DiT, but also batches the unconditional forward pass for classifier-free guidance.
         """
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
-        half = x[: len(x) // 2]
-        combined = torch.cat([half, half], dim=0)
-
+        # print('edge',edges.shape)
         
-        print('edge',edges.shape)
+        half = x[: len(x) // 2]
+        # print("x",x.shape)
+        combined = torch.cat([half, half], dim=0).to('cuda')
+        # print('combined',combined.shape)
         
         model_out = self.forward(combined, t, c, edges)
         
