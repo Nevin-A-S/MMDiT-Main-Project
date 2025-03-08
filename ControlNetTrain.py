@@ -53,19 +53,29 @@ class PerceptualLoss(nn.Module):
         x = (x + 1) * 0.5  # Convert from [-1, 1] to [0, 1]
         y = (y + 1) * 0.5
         
-        x = (x - self.mean) / self.std
-        y = (y - self.mean) / self.std
+        # Handle 4-channel inputs by only using the first 3 channels for VGG
+        if x.size(1) == 4:
+            x_rgb = x[:, :3, :, :]
+            x_rgb = (x_rgb - self.mean) / self.std
+        else:
+            x_rgb = (x - self.mean) / self.std
+            
+        if y.size(1) == 4:
+            y_rgb = y[:, :3, :, :]
+            y_rgb = (y_rgb - self.mean) / self.std
+        else:
+            y_rgb = (y - self.mean) / self.std
         
         x_features = []
         y_features = []
         
         # Extract VGG features
         for i, layer in enumerate(self.vgg):
-            x = layer(x)
-            y = layer(y)
+            x_rgb = layer(x_rgb)
+            y_rgb = layer(y_rgb)
             if i in self.layers:
-                x_features.append(x)
-                y_features.append(y)
+                x_features.append(x_rgb)
+                y_features.append(y_rgb)
         
         # Compute L1 loss between features
         loss = 0
@@ -267,7 +277,7 @@ def main(args):
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y, edges in pbar:
-                try:
+                # try:
                     # Dynamic weight adjustment based on training progress
                     progress = min(1.0, global_step / (total_steps * 0.8))
                     
@@ -296,7 +306,7 @@ def main(args):
                                 with torch.no_grad():
                                     model_kwargs = dict(c=y, edges=edges)
                                     model_output = model(x, t, **model_kwargs)
-                                    predicted_x0 = diffusion.predict_start_from_noise(x, t, model_output)
+                                    predicted_x0 = diffusion._predict_xstart_from_eps(x, t, model_output)
                                 
                                 # Apply additional losses
                                 if current_perceptual_weight > 0:
@@ -305,7 +315,15 @@ def main(args):
                                     loss_tracker.update('perceptual_loss', p_loss.item())
                                 
                                 if current_lpips_weight > 0:
-                                    l_loss = lpips_model(predicted_x0, x).mean()
+                                    # Handle 4-channel inputs for LPIPS by only using the first 3 channels
+                                    pred_lpips = predicted_x0
+                                    x_lpips = x
+                                    if pred_lpips.size(1) == 4:
+                                        pred_lpips = pred_lpips[:, :3, :, :]
+                                    if x_lpips.size(1) == 4:
+                                        x_lpips = x_lpips[:, :3, :, :]
+                                    
+                                    l_loss = lpips_model(pred_lpips, x_lpips).mean()
                                     total_loss = total_loss + current_lpips_weight * l_loss
                                     loss_tracker.update('lpips_loss', l_loss.item())
                                 
@@ -348,7 +366,7 @@ def main(args):
                             with torch.no_grad():
                                 model_kwargs = dict(c=y, edges=edges)
                                 model_output = model(x, t, **model_kwargs)
-                                predicted_x0 = diffusion.predict_start_from_noise(x, t, model_output)
+                                predicted_x0 = diffusion._predict_xstart_from_eps(x, t, model_output)
                             
                             # Apply additional losses
                             if current_perceptual_weight > 0:
@@ -357,7 +375,15 @@ def main(args):
                                 loss_tracker.update('perceptual_loss', p_loss.item())
                             
                             if current_lpips_weight > 0:
-                                l_loss = lpips_model(predicted_x0, x).mean()
+                                # Handle 4-channel inputs for LPIPS by only using the first 3 channels
+                                pred_lpips = predicted_x0
+                                x_lpips = x
+                                if pred_lpips.size(1) == 4:
+                                    pred_lpips = pred_lpips[:, :3, :, :]
+                                if x_lpips.size(1) == 4:
+                                    x_lpips = x_lpips[:, :3, :, :]
+                                
+                                l_loss = lpips_model(pred_lpips, x_lpips).mean()
                                 total_loss = total_loss + current_lpips_weight * l_loss
                                 loss_tracker.update('lpips_loss', l_loss.item())
                             
@@ -435,12 +461,12 @@ def main(args):
                         
                         save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
 
-                except Exception as e:
-                    print(f"Error at global step : {global_step}")
-                    print(e)
-                    f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
-                    f.write(f"Error at global step : {global_step} \n {e}")
-                    f.close()
+                # except Exception as e:
+                #     print(f"Error at global step : {global_step}")
+                #     print(e)
+                #     f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
+                #     f.write(f"Error at global step : {global_step} \n {e}")
+                #     f.close()
 
     print("Training finished!")
 
