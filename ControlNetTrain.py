@@ -6,6 +6,7 @@ from glob import glob
 from pathlib import Path
 from typing import Dict, Tuple
 
+import traceback
 import numpy as np
 import pandas as pd
 import torch
@@ -438,7 +439,7 @@ def main(args):
 
                 except Exception as e:
                     print(f"Error at global step : {global_step}")
-                    print(e.__traceback__)
+                    print(traceback.TracebackException.from_exception(e).stack)
                     f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
                     f.write(f"Error at global step : {global_step} \n {e}")
                     f.close()
