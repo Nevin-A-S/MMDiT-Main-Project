@@ -438,7 +438,7 @@ def main(args):
 
                 except Exception as e:
                     print(f"Error at global step : {global_step}")
-                    print(e)
+                    print(e.__traceback__)
                     f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
                     f.write(f"Error at global step : {global_step} \n {e}")
                     f.close()
