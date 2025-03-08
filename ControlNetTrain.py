@@ -6,7 +6,6 @@ from glob import glob
 from pathlib import Path
 from typing import Dict, Tuple
 
-import traceback
 import numpy as np
 import pandas as pd
 import torch
@@ -38,14 +37,14 @@ torch.backends.cudnn.deterministic = False
 
 class PerceptualLoss(nn.Module):
     """Perceptual loss using VGG16 features"""
-    def __init__(self, layers=[3, 8, 15, 22], weights=[0.1, 0.2, 0.4, 0.8]):
+    def __init__(self):
         super().__init__()
         self.vgg = vgg16(pretrained=True).features.eval()
         for param in self.vgg.parameters():
             param.requires_grad = False
         
-        self.layers = layers
-        self.weights = weights
+        self.layers = [3, 8, 15, 22]
+        self.weights = [0.1, 0.2, 0.4, 0.8]
         self.register_buffer('mean', torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer('std', torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
     
@@ -75,69 +74,29 @@ class PerceptualLoss(nn.Module):
             
         return loss
 
-class ControlNetLoss(nn.Module):
-    """Combined loss function for ControlNet training"""
-    def __init__(self, 
-                 perceptual_weight=0.1,
-                 control_weight=1.0,
-                 lpips_weight=0.2,
-                 edge_weight=0.5,
-                 device='cuda'):
-        super().__init__()
-        self.perceptual = PerceptualLoss().to(device)
-        self.lpips = lpips.LPIPS(net='vgg').to(device).eval()
-        self.control_weight = control_weight
-        self.perceptual_weight = perceptual_weight
-        self.lpips_weight = lpips_weight
-        self.edge_weight = edge_weight
-        
-    def forward(self, diffusion_loss, pred, target, control_signal=None):
-        """
-        Args:
-            diffusion_loss: Base diffusion loss
-            pred: Model's prediction
-            target: Ground truth
-            control_signal: Control signal (edge map)
-        """
-        # Base diffusion loss (with increased weight for control)
-        loss = self.control_weight * diffusion_loss
-        
-        # Add perceptual loss
-        if self.perceptual_weight > 0:
-            p_loss = self.perceptual(pred, target)
-            loss = loss + self.perceptual_weight * p_loss
-            
-        # Add LPIPS loss for better perceptual quality
-        if self.lpips_weight > 0:
-            # LPIPS expects input in range [-1, 1]
-            lpips_loss = self.lpips(pred, target).mean()
-            loss = loss + self.lpips_weight * lpips_loss
-            
-        # Add edge-guided loss to emphasize control
-        if control_signal is not None and self.edge_weight > 0:
-            # Ensure control signal is properly sized for gradient calculation
-            if control_signal.shape[2:] != target.shape[2:]:
-                control_signal = F.interpolate(control_signal, size=target.shape[2:], mode='bilinear')
-            
-            # Calculate gradient of prediction and target
-            pred_grad_x = torch.abs(pred[:, :, :, 1:] - pred[:, :, :, :-1])
-            pred_grad_y = torch.abs(pred[:, :, 1:, :] - pred[:, :, :-1, :])
-            
-            target_grad_x = torch.abs(target[:, :, :, 1:] - target[:, :, :, :-1])
-            target_grad_y = torch.abs(target[:, :, 1:, :] - target[:, :, :-1, :])
-            
-            # Resize control signal for gradient dimensions
-            cs_x = control_signal[:, :, :, :-1]
-            cs_y = control_signal[:, :, :-1, :]
-            
-            # Calculate edge-guided loss
-            edge_loss_x = F.mse_loss(pred_grad_x * cs_x, target_grad_x * cs_x)
-            edge_loss_y = F.mse_loss(pred_grad_y * cs_y, target_grad_y * cs_y)
-            
-            edge_loss = (edge_loss_x + edge_loss_y) * 0.5
-            loss = loss + self.edge_weight * edge_loss
-            
-        return loss
+class LossTracker:
+    """Track multiple loss components"""
+    def __init__(self):
+        self.loss_meters = {
+            'total_loss': AverageMeter(),
+            'diffusion_loss': AverageMeter(),
+            'perceptual_loss': AverageMeter(),
+            'lpips_loss': AverageMeter(),
+            'edge_loss': AverageMeter(),
+        }
+    
+    def update(self, key, value, batch_size=1):
+        if key in self.loss_meters:
+            self.loss_meters[key].update(value, batch_size)
+    
+    def reset(self):
+        for meter in self.loss_meters.values():
+            meter.reset()
+    
+    def get_avg(self, key):
+        if key in self.loss_meters:
+            return self.loss_meters[key].avg
+        return 0.0
 
 class ImageCaptionDataset(Dataset):
     def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
@@ -215,67 +174,13 @@ class AverageMeter:
         self.count += n
         self.avg = self.sum / self.count
 
-# Create multiple average meters for different loss components
-class LossTracker:
-    def __init__(self):
-        self.total_loss = AverageMeter()
-        self.diffusion_loss = AverageMeter()
-        self.perceptual_loss = AverageMeter()
-        self.lpips_loss = AverageMeter()
-        self.edge_loss = AverageMeter()
-    
-    def update(self, loss_dict, batch_size=1):
-        for key, value in loss_dict.items():
-            if hasattr(self, key):
-                getattr(self, key).update(value, batch_size)
-    
-    def reset(self):
-        for attr_name in dir(self):
-            attr = getattr(self, attr_name)
-            if isinstance(attr, AverageMeter):
-                attr.reset()
-
-    def get_loss_dict(self):
-        result = {}
-        for attr_name in dir(self):
-            attr = getattr(self, attr_name)
-            if isinstance(attr, AverageMeter):
-                result[attr_name] = attr.avg
-        return result
-
+# Using the original function signature but enhancing it internally
 @torch.compile  
-def training_step(model, x, t, y, diffusion, edges, control_loss=None):
-    """Compiled training step with improved loss functions"""
+def training_step(model, x, t, y, diffusion, edges):
+    """Compiled training step that maintains the original interface"""
     model_kwargs = dict(c=y, edges=edges)
-    
-    # Get base diffusion loss
     loss_dict = diffusion.training_losses(model, x, t, model_kwargs)
-    base_loss = loss_dict["loss"].mean()
-    
-    if control_loss is not None:
-        # For obtaining the model prediction, we'll need to:
-        # 1. Get noise prediction from the model
-        # 2. Convert it to the x_0 prediction
-        
-        # Step 1: Get model output directly
-        model_output = model(x, t, **model_kwargs)
-        
-        # Step 2: Use diffusion process to get x_0 prediction
-        # This depends on your diffusion implementation, but generally:
-        predicted_x0 = diffusion.predict_start_from_noise(x, t, model_output)
-        
-        # Compute the combined loss
-        combined_loss = control_loss(base_loss, predicted_x0, x, edges)
-        
-        # Return both the combined loss and components for logging
-        loss_components = {
-            "total_loss": combined_loss.item(),
-            "diffusion_loss": base_loss.item()
-        }
-        
-        return combined_loss, loss_components
-    
-    return base_loss, {"total_loss": base_loss.item()}
+    return loss_dict["loss"].mean()
 
 def load_checkpoint(checkpoint_path: str, model, ema, optimizer, fabric):
     """Load checkpoint and return the starting epoch and global step"""
@@ -322,17 +227,18 @@ def main(args):
     model, ema, vae, optimizer = setup_models(args, fabric)
     diffusion = create_diffusion(timestep_respacing="")
     
-    # Initialize the improved loss function
-    control_loss = ControlNetLoss(
-        perceptual_weight=0.2,  # Increased for stronger perceptual signal
-        control_weight=1.5,     # Higher weight on control contribution
-        lpips_weight=0.1,       # Moderate LPIPS for visual quality
-        edge_weight=0.8,        # Strong edge guidance
-        device=device
-    ).to(device)
+    # Initialize loss components - not connected to training_step yet
+    perceptual_loss = PerceptualLoss().to(device)
+    lpips_model = lpips.LPIPS(net='vgg').to(device).eval()
     
-    # If resuming, ensure control_loss is moved to correct device
-    control_loss = fabric.setup_module(control_loss)
+    # These will be applied separately outside training_step to maintain compatibility
+    perceptual_weight = 0.1
+    lpips_weight = 0.1
+    edge_weight = 0.5
+    
+    # If resuming, ensure models are moved to correct device
+    perceptual_loss = fabric.setup_module(perceptual_loss)
+    lpips_model = fabric.setup_module(lpips_model)
 
     # Load checkpoint if resuming
     start_epoch = 0
@@ -345,7 +251,8 @@ def main(args):
     train_loader = setup_dataloader(args, fabric)
 
     # Training loop
-    loss_tracker = LossTracker()
+    loss_meter = AverageMeter()  # Keep original loss meter
+    loss_tracker = LossTracker()  # Add enhanced loss tracker
     scaler = torch.cuda.amp.GradScaler() if args.mixed_precision == "fp16" else None
 
     model.train()
@@ -353,7 +260,6 @@ def main(args):
     
     # Calculate total steps for weight annealing
     total_steps = args.epochs * len(train_loader)
-    args.total_steps = total_steps
 
     print(f"Training for {args.epochs} epochs starting from epoch {start_epoch}...")
     for epoch in range(start_epoch, args.epochs):
@@ -361,17 +267,14 @@ def main(args):
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y, edges in pbar:
-                # try:
+                try:
                     # Dynamic weight adjustment based on training progress
                     progress = min(1.0, global_step / (total_steps * 0.8))
                     
-                    # Increase control weight over time
-                    control_loss.control_weight = 1.0 + progress * 1.0  # 1.0 to 2.0
-                    
-                    # Decrease auxiliary losses over time
-                    control_loss.perceptual_weight = max(0.05, 0.2 * (1.0 - progress * 0.7))
-                    control_loss.lpips_weight = max(0.02, 0.1 * (1.0 - progress * 0.8))
-                    control_loss.edge_weight = max(0.2, 0.8 * (1.0 - progress * 0.5))
+                    # Update weights for additional losses based on progress
+                    current_perceptual_weight = max(0.05, perceptual_weight * (1.0 - progress * 0.5))
+                    current_lpips_weight = max(0.02, lpips_weight * (1.0 - progress * 0.5))
+                    current_edge_weight = max(0.1, edge_weight * (1.0 - progress * 0.3))
                     
                     with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
                         x = vae.encode(x).latent_dist.sample().mul_(0.18215)
@@ -379,48 +282,144 @@ def main(args):
 
                     t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=x.device)
                     
+                    # Use the original training step function which has the correct signature
                     if scaler is not None:
                         with torch.cuda.amp.autocast():
-                            loss, loss_components = training_step(model, x, t, y, diffusion, edges, control_loss)
-                        scaler.scale(loss).backward()
+                            # Get diffusion loss from original training step
+                            diffusion_loss = training_step(model, x, t, y, diffusion, edges)
+                            
+                            # Add enhanced losses (only if weights are > 0)
+                            total_loss = diffusion_loss
+                            
+                            if current_perceptual_weight > 0 or current_lpips_weight > 0 or current_edge_weight > 0:
+                                # Get model prediction for perceptual losses
+                                with torch.no_grad():
+                                    model_kwargs = dict(c=y, edges=edges)
+                                    model_output = model(x, t, **model_kwargs)
+                                    predicted_x0 = diffusion.predict_start_from_noise(x, t, model_output)
+                                
+                                # Apply additional losses
+                                if current_perceptual_weight > 0:
+                                    p_loss = perceptual_loss(predicted_x0, x)
+                                    total_loss = total_loss + current_perceptual_weight * p_loss
+                                    loss_tracker.update('perceptual_loss', p_loss.item())
+                                
+                                if current_lpips_weight > 0:
+                                    l_loss = lpips_model(predicted_x0, x).mean()
+                                    total_loss = total_loss + current_lpips_weight * l_loss
+                                    loss_tracker.update('lpips_loss', l_loss.item())
+                                
+                                if current_edge_weight > 0:
+                                    # Calculate edge-guided loss
+                                    pred_grad_x = torch.abs(predicted_x0[:, :, :, 1:] - predicted_x0[:, :, :, :-1])
+                                    pred_grad_y = torch.abs(predicted_x0[:, :, 1:, :] - predicted_x0[:, :, :-1, :])
+                                    
+                                    target_grad_x = torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1])
+                                    target_grad_y = torch.abs(x[:, :, 1:, :] - x[:, :, :-1, :])
+                                    
+                                    # Use edges for weighting
+                                    cs_x = edges[:, :, :, :-1]
+                                    cs_y = edges[:, :, :-1, :]
+                                    
+                                    edge_loss_x = F.mse_loss(pred_grad_x * cs_x, target_grad_x * cs_x)
+                                    edge_loss_y = F.mse_loss(pred_grad_y * cs_y, target_grad_y * cs_y)
+                                    
+                                    edge_loss = (edge_loss_x + edge_loss_y) * 0.5
+                                    total_loss = total_loss + current_edge_weight * edge_loss
+                                    loss_tracker.update('edge_loss', edge_loss.item())
+                            
+                            # Track losses
+                            loss_tracker.update('diffusion_loss', diffusion_loss.item())
+                            loss_tracker.update('total_loss', total_loss.item())
+                            
+                        # Use scaler with the total loss
+                        scaler.scale(total_loss).backward()
                         scaler.step(optimizer)
                         scaler.update()
                     else:
-                        loss, loss_components = training_step(model, x, t, y, diffusion, edges, control_loss)
-                        fabric.backward(loss)
-                        # Gradient clipping - helps stabilize training with complex loss functions
+                        # Get diffusion loss from original training step
+                        diffusion_loss = training_step(model, x, t, y, diffusion, edges)
+                        
+                        # Add enhanced losses (only if weights are > 0)
+                        total_loss = diffusion_loss
+                        
+                        if current_perceptual_weight > 0 or current_lpips_weight > 0 or current_edge_weight > 0:
+                            # Get model prediction for perceptual losses
+                            with torch.no_grad():
+                                model_kwargs = dict(c=y, edges=edges)
+                                model_output = model(x, t, **model_kwargs)
+                                predicted_x0 = diffusion.predict_start_from_noise(x, t, model_output)
+                            
+                            # Apply additional losses
+                            if current_perceptual_weight > 0:
+                                p_loss = perceptual_loss(predicted_x0, x)
+                                total_loss = total_loss + current_perceptual_weight * p_loss
+                                loss_tracker.update('perceptual_loss', p_loss.item())
+                            
+                            if current_lpips_weight > 0:
+                                l_loss = lpips_model(predicted_x0, x).mean()
+                                total_loss = total_loss + current_lpips_weight * l_loss
+                                loss_tracker.update('lpips_loss', l_loss.item())
+                            
+                            if current_edge_weight > 0:
+                                # Calculate edge-guided loss
+                                pred_grad_x = torch.abs(predicted_x0[:, :, :, 1:] - predicted_x0[:, :, :, :-1])
+                                pred_grad_y = torch.abs(predicted_x0[:, :, 1:, :] - predicted_x0[:, :, :-1, :])
+                                
+                                target_grad_x = torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1])
+                                target_grad_y = torch.abs(x[:, :, 1:, :] - x[:, :, :-1, :])
+                                
+                                # Use edges for weighting
+                                cs_x = edges[:, :, :, :-1]
+                                cs_y = edges[:, :, :-1, :]
+                                
+                                edge_loss_x = F.mse_loss(pred_grad_x * cs_x, target_grad_x * cs_x)
+                                edge_loss_y = F.mse_loss(pred_grad_y * cs_y, target_grad_y * cs_y)
+                                
+                                edge_loss = (edge_loss_x + edge_loss_y) * 0.5
+                                total_loss = total_loss + current_edge_weight * edge_loss
+                                loss_tracker.update('edge_loss', edge_loss.item())
+                        
+                        # Track losses
+                        loss_tracker.update('diffusion_loss', diffusion_loss.item())
+                        loss_tracker.update('total_loss', total_loss.item())
+                        
+                        fabric.backward(total_loss)
+                        
+                        # Gradient clipping for stability
                         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                         optimizer.step()
 
                     optimizer.zero_grad(set_to_none=True)
                     update_ema(ema, model, fabric)
 
-                    # Update loss tracking
-                    loss_tracker.total_loss.update(loss_components["total_loss"])
-                    if "diffusion_loss" in loss_components:
-                        loss_tracker.diffusion_loss.update(loss_components["diffusion_loss"])
-                    
+                    # For compatibility with original code, update the standard loss meter too
+                    loss_meter.update(total_loss.item())
                     global_step += 1
 
                     # Update progress bar with additional metrics
-                    pbar_dict = {
-                        "loss": f"{loss_tracker.total_loss.avg:.4f}",
+                    pbar.set_postfix({
+                        "loss": f"{loss_meter.avg:.4f}",
                         "step": global_step,
-                        "ctrl_w": f"{control_loss.control_weight:.2f}"
-                    }
-                    pbar.set_postfix(pbar_dict)
+                        "p_w": f"{current_perceptual_weight:.2f}",
+                        "e_w": f"{current_edge_weight:.2f}"
+                    })
 
                     if global_step % args.log_every == 0:
                         # Log all loss components
-                        writer.add_scalar("loss/total", loss_tracker.total_loss.avg, global_step)
-                        writer.add_scalar("loss/diffusion", loss_tracker.diffusion_loss.avg, global_step)
+                        writer.add_scalar("loss/total", loss_tracker.get_avg('total_loss'), global_step)
+                        writer.add_scalar("loss/diffusion", loss_tracker.get_avg('diffusion_loss'), global_step)
+                        writer.add_scalar("loss/perceptual", loss_tracker.get_avg('perceptual_loss'), global_step)
+                        writer.add_scalar("loss/lpips", loss_tracker.get_avg('lpips_loss'), global_step)
+                        writer.add_scalar("loss/edge", loss_tracker.get_avg('edge_loss'), global_step)
                         
-                        # Log control weights
-                        writer.add_scalar("weights/control", control_loss.control_weight, global_step)
-                        writer.add_scalar("weights/perceptual", control_loss.perceptual_weight, global_step)
-                        writer.add_scalar("weights/lpips", control_loss.lpips_weight, global_step)
-                        writer.add_scalar("weights/edge", control_loss.edge_weight, global_step)
+                        # Log weights
+                        writer.add_scalar("weights/perceptual", current_perceptual_weight, global_step)
+                        writer.add_scalar("weights/lpips", current_lpips_weight, global_step)
+                        writer.add_scalar("weights/edge", current_edge_weight, global_step)
                         
+                        # Reset loss trackers
+                        loss_meter.reset()
                         loss_tracker.reset()
 
                     if args.ckpt_every > 0 and global_step % args.ckpt_every == 0:
@@ -430,19 +429,18 @@ def main(args):
                         
                         # Save current loss weights
                         with open(f"{experiment_dir}/{global_step}_LossWeights.txt", "w") as f:
-                            f.write(f"Control Weight: {control_loss.control_weight:.4f}\n")
-                            f.write(f"Perceptual Weight: {control_loss.perceptual_weight:.4f}\n")
-                            f.write(f"LPIPS Weight: {control_loss.lpips_weight:.4f}\n")
-                            f.write(f"Edge Weight: {control_loss.edge_weight:.4f}\n")
+                            f.write(f"Perceptual Weight: {current_perceptual_weight:.4f}\n")
+                            f.write(f"LPIPS Weight: {current_lpips_weight:.4f}\n")
+                            f.write(f"Edge Weight: {current_edge_weight:.4f}\n")
                         
                         save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
 
-                # except Exception as e:
-                #     print(f"Error at global step : {global_step}")
-                #     print(traceback.TracebackException.from_exception(e).stack)
-                #     f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
-                #     f.write(f"Error at global step : {global_step} \n {e}")
-                #     f.close()
+                except Exception as e:
+                    print(f"Error at global step : {global_step}")
+                    print(e)
+                    f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
+                    f.write(f"Error at global step : {global_step} \n {e}")
+                    f.close()
 
     print("Training finished!")
 
@@ -493,11 +491,11 @@ def setup_models(args, fabric):
     ema.load_state_dict(model.state_dict())
     ema.requires_grad_(False)
 
-    # Setup optimizer with gradient clipping and learning rate warmup
+    # Setup optimizer with gentle weight decay for regularization
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=args.lr,
-        weight_decay=0.01,  # Added small weight decay for regularization
+        weight_decay=0.01,
         eps=1e-8,
     )
     
@@ -562,6 +560,7 @@ def update_ema(ema, model, fabric, decay=0.9999):
     with fabric.no_backward_sync(model):
         for ema_param, model_param in zip(ema.parameters(), model.parameters()):
             ema_param.data.mul_(decay).add_(model_param.data.to(ema_param.dtype), alpha=1 - decay)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
