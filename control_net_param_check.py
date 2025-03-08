@@ -35,7 +35,7 @@ def main():
     )
 
     # Load the checkpoint from training
-    checkpoint_path = "outputs/028-MMDiT-B-2/checkpoint_control_net_0180000.pt"
+    checkpoint_path = "outputs/028-MMDiT-B-2/checkpoint_control_net_0490000.pt"
     epoch, global_step = load_checkpoint(checkpoint_path, model, fabric)
 
     print(f"\nLoaded checkpoint from epoch {epoch}, global step {global_step}")
