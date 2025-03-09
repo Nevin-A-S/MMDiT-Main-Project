@@ -460,37 +460,93 @@ class ViTFineTuner:
         
         return np.array(all_preds), np.array(all_probs)
 
-# Function to create train/validation split
-def create_train_val_split(dataset, val_ratio=0.2, seed=42):
+# Additional helper functions for adapting caption dataset to classification task
+def convert_caption_dataset_to_classification(dataset, label_extractor=None):
     """
-    Split dataset into training and validation sets.
+    Convert a caption dataset to a classification dataset.
     
     Args:
-        dataset: PyTorch Dataset
-        val_ratio: Validation set ratio
+        dataset: Original ImageCaptionDataset
+        label_extractor: Function to extract label from caption
+        
+    Returns:
+        ClassificationDataset: Dataset for classification tasks
+    """
+    # Example label extractor - you would need to customize this
+    # based on how your captions relate to class labels
+    if label_extractor is None:
+        def label_extractor(caption):
+            # Example: extract first word of caption as class
+            return caption.split()[0]
+    
+    class ClassificationDataset(torch.utils.data.Dataset):
+        def __init__(self, original_dataset, label_extractor):
+            self.original_dataset = original_dataset
+            self.label_extractor = label_extractor
+            
+            # Create label mapping
+            all_labels = []
+            for i in range(len(original_dataset)):
+                _, caption = original_dataset[i]
+                label = label_extractor(caption)
+                all_labels.append(label)
+            
+            unique_labels = sorted(set(all_labels))
+            self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
+            self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
+            self.num_classes = len(unique_labels)
+            
+            # Save label mapping to a file for future reference
+            os.makedirs("label_mappings", exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            mapping_file = f"label_mappings/label_mapping_{timestamp}.json"
+            with open(mapping_file, 'w') as f:
+                json.dump({
+                    'label_to_idx': self.label_to_idx,
+                    'idx_to_label': {str(k): v for k, v in self.idx_to_label.items()}
+                }, f, indent=4)
+            print(f"Label mapping saved to {mapping_file}")
+        
+        def __len__(self):
+            return len(self.original_dataset)
+            
+        def __getitem__(self, idx):
+            image, caption = self.original_dataset[idx]
+            label = self.label_extractor(caption)
+            label_idx = self.label_to_idx[label]
+            return image, label_idx
+    
+    return ClassificationDataset(dataset, label_extractor)
+
+def create_train_val_split(dataset, val_ratio=0.2, seed=42):
+    """
+    Create train/validation split indices.
+    
+    Args:
+        dataset: Dataset to split
+        val_ratio: Ratio of validation set size
         seed: Random seed for reproducibility
         
     Returns:
-        train_indices, val_indices: Indices for train and validation sets
+        train_indices, val_indices: Lists of indices for train and validation sets
     """
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(val_ratio * dataset_size))
     
-    random.seed(seed)
-    random.shuffle(indices)
+    np.random.seed(seed)
+    np.random.shuffle(indices)
     
     train_indices, val_indices = indices[split:], indices[:split]
     
     return train_indices, val_indices
 
-# Memory-efficient subset sampler
 class SubsetSampler(torch.utils.data.Sampler):
     def __init__(self, indices):
         self.indices = indices
         
     def __iter__(self):
-        return (i for i in self.indices)
+        return iter(self.indices)
         
     def __len__(self):
         return len(self.indices)
@@ -599,62 +655,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Additional helper functions for adapting caption dataset to classification task
-
-def convert_caption_dataset_to_classification(dataset, label_extractor=None):
-    """
-    Convert a caption dataset to a classification dataset.
-    
-    Args:
-        dataset: Original ImageCaptionDataset
-        label_extractor: Function to extract label from caption
-        
-    Returns:
-        ClassificationDataset: Dataset for classification tasks
-    """
-    # Example label extractor - you would need to customize this
-    # based on how your captions relate to class labels
-    if label_extractor is None:
-        def label_extractor(caption):
-            # Example: extract first word of caption as class
-            return caption.split()[0]
-    
-    class ClassificationDataset(torch.utils.data.Dataset):
-        def __init__(self, original_dataset, label_extractor):
-            self.original_dataset = original_dataset
-            self.label_extractor = label_extractor
-            
-            # Create label mapping
-            all_labels = []
-            for i in range(len(original_dataset)):
-                _, caption = original_dataset[i]
-                label = label_extractor(caption)
-                all_labels.append(label)
-            
-            unique_labels = sorted(set(all_labels))
-            self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
-            self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
-            self.num_classes = len(unique_labels)
-            
-            # Save label mapping to a file for future reference
-            os.makedirs("label_mappings", exist_ok=True)
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            mapping_file = f"label_mappings/label_mapping_{timestamp}.json"
-            with open(mapping_file, 'w') as f:
-                json.dump({
-                    'label_to_idx': self.label_to_idx,
-                    'idx_to_label': {str(k): v for k, v in self.idx_to_label.items()}
-                }, f, indent=4)
-            print(f"Label mapping saved to {mapping_file}")
-        
-        def __len__(self):
-            return len(self.original_dataset)
-            
-        def __getitem__(self, idx):
-            image, caption = self.original_dataset[idx]
-            label = self.label_extractor(caption)
-            label_idx = self.label_to_idx[label]
-            return image, label_idx
-            
-    return ClassificationDataset(dataset, label_extractor)
