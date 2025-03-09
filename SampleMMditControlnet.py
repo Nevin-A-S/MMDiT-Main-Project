@@ -69,7 +69,7 @@ class ImageCaptionDataset(Dataset):
             else:
                 image_transformed = image
                 edges_transformed = edges_pil
-            image_location = img_path
+            image_location = str(img_path)
             result = (image_transformed, caption, edges_transformed, image_location)
             
             if len(self.cache) < self.cache_size:
