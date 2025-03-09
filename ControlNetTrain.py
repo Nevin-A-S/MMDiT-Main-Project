@@ -277,7 +277,7 @@ def main(args):
         
         with tqdm(train_loader, desc=f"Epoch {epoch}") as pbar:
             for x, y, edges in pbar:
-                # try:
+                try:
                     # Dynamic weight adjustment based on training progress
                     progress = min(1.0, global_step / (total_steps * 0.8))
                     
@@ -461,12 +461,12 @@ def main(args):
                         
                         save_checkpoint(model, ema, optimizer, epoch, global_step, experiment_dir)
 
-                # except Exception as e:
-                #     print(f"Error at global step : {global_step}")
-                #     print(e)
-                #     f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
-                #     f.write(f"Error at global step : {global_step} \n {e}")
-                #     f.close()
+                except Exception as e:
+                    print(f"Error at global step : {global_step}")
+                    print(e)
+                    f = open(f"{experiment_dir}/{global_step}_Error.txt", "w")
+                    f.write(f"Error at global step : {global_step} \n {e}")
+                    f.close()
 
     print("Training finished!")
 
