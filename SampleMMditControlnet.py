@@ -69,8 +69,8 @@ class ImageCaptionDataset(Dataset):
             else:
                 image_transformed = image
                 edges_transformed = edges_pil
-
-            result = (image_transformed, caption, edges_transformed)
+            image_location = str(img_path)
+            result = (image_transformed, caption, edges_transformed, image_location)
             
             if len(self.cache) < self.cache_size:
                 self.cache[idx] = result
@@ -232,7 +232,7 @@ def main(args):
 
     model.eval()
     vae.eval()
-    for i, (_, captions , edges) in enumerate(dataloader):
+    for i, (_, captions , edges,image_loc) in enumerate(dataloader):
         
         with torch.no_grad(), torch.cuda.amp.autocast(enabled=args.mixed_precision == "fp16"):
 
@@ -266,11 +266,12 @@ def main(args):
 
             save_path = Path(args.output_dir) / f"samples_image_{ckpt_path}"
             save_path.mkdir(parents=True, exist_ok=True)
-            for i, (sample, prompt) in enumerate(zip(samples, captions)):
+            for i, (sample, prompt,loc) in enumerate(zip(samples, captions,image_loc)):
                 image_path = save_path / f"sample_{global_count}.png"
                 save_image(sample, image_path, normalize=True, value_range=(-1, 1))
                 prompt_path = save_path / f"sample_{global_count}_prompt.txt"
                 prompt_path.write_text(prompt)
+                print("orginalImg : ",loc)
                 print(f"Saved image sample to {image_path}")
                 global_count += 1
 
