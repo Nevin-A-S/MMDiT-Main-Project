@@ -549,7 +549,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         epochs=100,
-        save_interval=1,
+        save_interval=10,
         eval_interval=1
     )
     
