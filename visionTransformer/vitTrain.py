@@ -477,7 +477,7 @@ def convert_caption_dataset_to_classification(dataset, label_extractor=None):
     if label_extractor is None:
         def label_extractor(caption):
             # Example: extract first word of caption as class
-            return caption.split()[0]
+            return caption
     
     class ClassificationDataset(torch.utils.data.Dataset):
         def __init__(self, original_dataset, label_extractor):
@@ -596,7 +596,6 @@ def main():
         full_dataset, 
         label_extractor=custom_label_extractor
     )
-    
     # Create train/val split
     train_indices, val_indices = create_train_val_split(classification_dataset, val_ratio=0.1)
     
