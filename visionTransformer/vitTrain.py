@@ -18,6 +18,8 @@ from torch.cuda.amp import autocast, GradScaler
 from sklearn.metrics import accuracy_score, f1_score
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import ViTForImageClassification, ViTConfig, ViTImageProcessor
+import json
+import datetime
 
 class ImageCaptionDataset(Dataset):
     def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
@@ -128,6 +130,10 @@ class ViTFineTuner:
         self.optimizer = None
         self.criterion = None
         self.scaler = GradScaler() if mixed_precision else None
+        
+        # Label mapping
+        self.label_to_idx = None
+        self.idx_to_label = None
         
         if self.use_wandb:
             wandb.init(project=project_name)
@@ -385,6 +391,17 @@ class ViTFineTuner:
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
         }, path)
+        
+        # Save label mapping if available
+        if hasattr(self, 'label_to_idx') and self.label_to_idx is not None:
+            label_map_path = path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
+            with open(label_map_path, 'w') as f:
+                json.dump({
+                    'label_to_idx': self.label_to_idx,
+                    'idx_to_label': self.idx_to_label
+                }, f, indent=4)
+            print(f"Label mapping saved to {label_map_path}")
+            
         print(f"Model saved to {path}")
     
     def load_model(self, path):
@@ -397,6 +414,17 @@ class ViTFineTuner:
         checkpoint = torch.load(path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # Try to load label mapping
+        label_map_path = path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
+        if os.path.exists(label_map_path):
+            with open(label_map_path, 'r') as f:
+                label_map = json.load(f)
+                # Convert string keys back to integers for idx_to_label
+                self.label_to_idx = label_map['label_to_idx']
+                self.idx_to_label = {int(k): v for k, v in label_map['idx_to_label'].items()}
+            print(f"Label mapping loaded from {label_map_path}")
+        
         print(f"Model loaded from {path}")
     
     def predict(self, test_loader):
@@ -501,12 +529,24 @@ def main():
             cache_size=1000 
         )
     
+    # Convert to classification dataset if needed
+    # Define a custom label extractor if needed
+    def custom_label_extractor(caption):
+        # Extract tumor type from caption
+        # This is just an example - modify based on your data
+        return caption.split()[0]  # Assuming first word is the tumor type
+    
+    classification_dataset = convert_caption_dataset_to_classification(
+        full_dataset, 
+        label_extractor=custom_label_extractor
+    )
+    
     # Create train/val split
-    train_indices, val_indices = create_train_val_split(full_dataset, val_ratio=0.1)
+    train_indices, val_indices = create_train_val_split(classification_dataset, val_ratio=0.1)
     
     # Create train and validation dataloaders
     train_loader = DataLoader(
-        Subset(full_dataset, train_indices),
+        Subset(classification_dataset, train_indices),
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
@@ -515,7 +555,7 @@ def main():
     )
 
     val_loader = DataLoader(
-        Subset(full_dataset, val_indices),
+        Subset(classification_dataset, val_indices),
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
@@ -524,11 +564,8 @@ def main():
     )
 
     
-    # Count number of unique classes in your dataset
-    # Adapt this according to how your labels are stored
-    # For this example, assuming labels are the captions, we'd need to modify this
-    # num_classes = len(set([label for _, label in full_dataset]))
-    num_classes = 10  # Replace with actual number of classes
+    # Get number of classes from the dataset
+    num_classes = classification_dataset.num_classes
     
     # Initialize fine-tuner
     fine_tuner = ViTFineTuner(
@@ -543,6 +580,10 @@ def main():
     
     # Setup model with number of classes
     fine_tuner.setup_model(num_classes=num_classes)
+    
+    # Pass the label mapping to the fine-tuner
+    fine_tuner.label_to_idx = classification_dataset.label_to_idx
+    fine_tuner.idx_to_label = classification_dataset.idx_to_label
     
     # Train model
     fine_tuner.train(
@@ -595,6 +636,17 @@ def convert_caption_dataset_to_classification(dataset, label_extractor=None):
             self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
             self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
             self.num_classes = len(unique_labels)
+            
+            # Save label mapping to a file for future reference
+            os.makedirs("label_mappings", exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            mapping_file = f"label_mappings/label_mapping_{timestamp}.json"
+            with open(mapping_file, 'w') as f:
+                json.dump({
+                    'label_to_idx': self.label_to_idx,
+                    'idx_to_label': {str(k): v for k, v in self.idx_to_label.items()}
+                }, f, indent=4)
+            print(f"Label mapping saved to {mapping_file}")
         
         def __len__(self):
             return len(self.original_dataset)

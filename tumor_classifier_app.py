@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from torchvision import transforms
 from transformers import ViTImageProcessor, ViTForImageClassification, ViTConfig
+import json
 
 import sys
 sys.path.append(".")
@@ -31,6 +32,20 @@ def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", 
         model: Loaded model
         idx_to_label: Dictionary mapping from index to label
     """
+    # Check if label mapping file exists
+    label_map_path = checkpoint_path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
+    idx_to_label = None
+    
+    if os.path.exists(label_map_path):
+        try:
+            with open(label_map_path, 'r') as f:
+                label_map = json.load(f)
+                # Convert string keys back to integers for idx_to_label
+                idx_to_label = {int(k): v for k, v in label_map['idx_to_label'].items()}
+            st.sidebar.success(f"Label mapping loaded from {os.path.basename(label_map_path)}")
+        except Exception as e:
+            st.sidebar.warning(f"Error loading label mapping: {str(e)}")
+    
     # Initialize the ViTFineTuner
     fine_tuner = ViTFineTuner(
         model_name=model_name,
@@ -44,11 +59,38 @@ def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", 
     # Load the model checkpoint
     fine_tuner.load_model(checkpoint_path)
     
-    # Get the idx_to_label mapping if available
-    idx_to_label = getattr(fine_tuner, 'idx_to_label', None)
-    if idx_to_label is None:
-        # If not available, create a default mapping
-        idx_to_label = {i: f"Class {i}" for i in range(num_classes)}
+    # If we loaded a label mapping from the file, use it
+    if idx_to_label is not None:
+        fine_tuner.idx_to_label = idx_to_label
+    # Otherwise, check if the model has a label mapping
+    elif hasattr(fine_tuner, 'idx_to_label') and fine_tuner.idx_to_label is not None:
+        idx_to_label = fine_tuner.idx_to_label
+    # If no label mapping is available, create a default one
+    else:
+        # If not available, create a mapping with common tumor types
+        tumor_types = [
+            "Meningioma",
+            "Glioma",
+            "Pituitary Tumor",
+            "Astrocytoma",
+            "Oligodendroglioma",
+            "Ependymoma",
+            "Medulloblastoma",
+            "Schwannoma",
+            "Lymphoma",
+            "Metastatic Tumor"
+        ]
+        
+        # If num_classes is less than the length of tumor_types, truncate the list
+        if num_classes < len(tumor_types):
+            tumor_types = tumor_types[:num_classes]
+        
+        # If num_classes is greater than the length of tumor_types, add generic labels
+        elif num_classes > len(tumor_types):
+            for i in range(len(tumor_types), num_classes):
+                tumor_types.append(f"Tumor Type {i+1}")
+        
+        idx_to_label = {i: tumor_types[i] for i in range(num_classes)}
     
     return fine_tuner, idx_to_label
 
@@ -108,8 +150,10 @@ def main():
     st.title("Tumor Classification")
     st.write("Upload an image to classify the type of tumor")
     
+    # Sidebar for model selection
     st.sidebar.title("Model Configuration")
     
+    # Get available checkpoint files
     checkpoint_dir = "vit_checkpoints"
     if os.path.exists(checkpoint_dir):
         checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.endswith('.pt') or f.endswith('.pth')]
@@ -120,13 +164,16 @@ def main():
         st.error("No model checkpoints found in the 'vit_checkpoints' directory. Please train a model first.")
         return
     
+    # Model selection
     selected_checkpoint = st.sidebar.selectbox(
         "Select Model Checkpoint",
         checkpoint_files
     )
     
+    # Number of classes
     num_classes = st.sidebar.number_input("Number of Classes", min_value=2, value=10)
     
+    # Load the model
     checkpoint_path = os.path.join(checkpoint_dir, selected_checkpoint)
     
     try:
@@ -136,7 +183,20 @@ def main():
         st.sidebar.error(f"Error loading model: {str(e)}")
         return
     
+    # Custom class mapping
     st.sidebar.subheader("Class Mapping")
+    use_loaded_mapping = st.sidebar.checkbox("Use loaded label mapping", value=True)
+    
+    if not use_loaded_mapping:
+        st.sidebar.write("Enter custom class names:")
+        custom_class_names = {}
+        for i in range(num_classes):
+            default_name = idx_to_label.get(i, f"Tumor Type {i+1}")
+            custom_class_names[i] = st.sidebar.text_input(f"Class {i} name", value=default_name)
+        idx_to_label = custom_class_names
+    
+    # Display class mapping
+    st.sidebar.subheader("Current Class Mapping")
     for idx, label in idx_to_label.items():
         st.sidebar.write(f"Class {idx}: {label}")
     
