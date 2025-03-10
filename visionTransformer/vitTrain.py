@@ -579,7 +579,7 @@ def main():
     num_workers = 4  # Adjust based on CPU cores
     
     full_dataset = ImageCaptionDataset(
-            csv_path="visionTransformer/dataset_for_training.csv",
+            csv_path="visionTransformer/new_synthetic_dataset.csv",
             root_dir="",
             transform=transform,
             cache_size=1000 

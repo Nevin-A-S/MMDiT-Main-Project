@@ -1,0 +1,24 @@
+{
+    "label_to_idx": {
+        "Brain": 0,
+        "Glioma": 1,
+        "Meningioma": 2,
+        "Mild": 3,
+        "Moderate": 4,
+        "No": 5,
+        "Non": 6,
+        "Pituitary": 7,
+        "Very": 8
+    },
+    "idx_to_label": {
+        "0": "Brain",
+        "1": "Glioma",
+        "2": "Meningioma",
+        "3": "Mild",
+        "4": "Moderate",
+        "5": "No",
+        "6": "Non",
+        "7": "Pituitary",
+        "8": "Very"
+    }
+}
