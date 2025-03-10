@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-base_dir = "test_folder"
+base_dir = "outputs/sample_control_net/samples_image_outputs/028-MMDiT-B-2/checkpoint_control_net_0550000.pt/"
 captions = []
 images = []
 

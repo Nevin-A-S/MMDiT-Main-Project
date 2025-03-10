@@ -203,7 +203,7 @@ def main(args):
 
     # temp_csv_path = make_dataset(text_prompts, text_prompts)
 
-    temp_csv_path = 'dataPreprocessing/subset_for_inference.csv'
+    temp_csv_path = 'dataPreprocessing/inference_dataset.csv'
 
     transform = transforms.Compose([
         transforms.Resize((args.image_size,args.image_size)),
