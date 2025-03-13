@@ -7,6 +7,7 @@ import numpy as np
 from torchvision import transforms
 from transformers import ViTImageProcessor, ViTForImageClassification, ViTConfig
 import json
+import numpy
 
 import sys
 sys.path.append(".")
@@ -17,6 +18,15 @@ st.set_page_config(
     page_icon="🔬",
     layout="wide"
 )
+
+# Add safe globals for NumPy objects to handle PyTorch 2.6+ security restrictions
+try:
+    from torch.serialization import add_safe_globals
+    # Add numpy scalar to safe globals
+    add_safe_globals([numpy._core.multiarray.scalar])
+except (ImportError, AttributeError):
+    # Older PyTorch versions don't have this
+    pass
 
 @st.cache_resource
 def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", num_classes=None):
@@ -64,6 +74,33 @@ def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", 
     
     # Load the model checkpoint
     try:
+        # Override the load_checkpoint method to handle PyTorch 2.6+ security restrictions
+        def safe_load_checkpoint(path):
+            print(f"Loading checkpoint from {path}")
+            try:
+                # First try with weights_only=False (less secure but compatible with older checkpoints)
+                checkpoint = torch.load(path, map_location=fine_tuner.device, weights_only=False)
+            except (TypeError, ValueError):
+                # For older PyTorch versions that don't have weights_only parameter
+                checkpoint = torch.load(path, map_location=fine_tuner.device)
+            
+            # Load model state
+            fine_tuner.model.load_state_dict(checkpoint['model_state_dict'])
+            
+            # Load optimizer state
+            fine_tuner.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
+            # Load EMA state if available
+            if fine_tuner.use_ema and 'ema_state_dict' in checkpoint:
+                for name, param in checkpoint['ema_state_dict'].items():
+                    fine_tuner.ema_model.ema[name] = param.to(fine_tuner.device)
+            
+            return checkpoint
+        
+        # Replace the method with our safe version
+        fine_tuner.load_checkpoint = safe_load_checkpoint
+        
+        # Now load the checkpoint
         checkpoint = fine_tuner.load_checkpoint(checkpoint_path)
         st.sidebar.success(f"Model checkpoint loaded successfully")
     except Exception as e:
