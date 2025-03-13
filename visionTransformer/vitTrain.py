@@ -6,12 +6,13 @@ import torch
 import random
 import numpy as np
 import pandas as pd
+import json
 from PIL import Image
 from tqdm import tqdm
 import torch.nn as nn
 from pathlib import Path
 import torch.optim as optim
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Dict, Tuple, List, Optional, Union, Any
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.cuda.amp import autocast, GradScaler
@@ -296,6 +297,115 @@ class ImageCaptionDataset(Dataset):
         images, captions = zip(*batch)
         images = torch.stack(images, dim=0)
         return images, list(captions)
+
+# ------------------------------
+# Label Encoder for handling captions
+# ------------------------------
+class LabelEncoder:
+    def __init__(self):
+        self.label_to_idx = {}
+        self.idx_to_label = {}
+        self.num_classes = 0
+        self.is_fitted = False
+    
+    def fit(self, labels: List[str]) -> 'LabelEncoder':
+        """Fit the encoder on a list of labels."""
+        unique_labels = sorted(set(labels))
+        self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
+        self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
+        self.num_classes = len(unique_labels)
+        self.is_fitted = True
+        return self
+    
+    def transform(self, labels: List[str]) -> List[int]:
+        """Transform labels to indices."""
+        if not self.is_fitted:
+            raise ValueError("LabelEncoder is not fitted yet. Call fit() first.")
+        
+        # Handle unknown labels gracefully
+        return [self.label_to_idx.get(label, -1) for label in labels]
+    
+    def fit_transform(self, labels: List[str]) -> List[int]:
+        """Fit the encoder and transform labels to indices."""
+        self.fit(labels)
+        return self.transform(labels)
+    
+    def inverse_transform(self, indices: List[int]) -> List[str]:
+        """Transform indices back to labels."""
+        if not self.is_fitted:
+            raise ValueError("LabelEncoder is not fitted yet. Call fit() first.")
+        
+        return [self.idx_to_label.get(idx, "unknown") for idx in indices]
+    
+    def save(self, path: str) -> None:
+        """Save the encoder to a JSON file."""
+        data = {
+            "label_to_idx": self.label_to_idx,
+            "idx_to_label": {int(k): v for k, v in self.idx_to_label.items()},
+            "num_classes": self.num_classes,
+            "is_fitted": self.is_fitted
+        }
+        
+        with open(path, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def load(self, path: str) -> 'LabelEncoder':
+        """Load the encoder from a JSON file."""
+        with open(path, 'r') as f:
+            data = json.load(f)
+        
+        self.label_to_idx = data["label_to_idx"]
+        self.idx_to_label = {int(k): v for k, v in data["idx_to_label"].items()}
+        self.num_classes = data["num_classes"]
+        self.is_fitted = data["is_fitted"]
+        
+        return self
+
+# ------------------------------
+# Classification Dataset with Label Encoder
+# ------------------------------
+class ClassificationDataset(torch.utils.data.Dataset):
+    def __init__(self, original_dataset, label_encoder=None, label_extractor=None):
+        self.original_dataset = original_dataset
+        
+        if label_extractor is None:
+            def label_extractor(caption):
+                return caption.split()[0]
+        
+        self.label_extractor = label_extractor
+        
+        # Extract all labels
+        all_labels = []
+        for i in range(len(original_dataset)):
+            _, caption = original_dataset[i]
+            label = label_extractor(caption)
+            all_labels.append(label)
+        
+        # Create or use label encoder
+        if label_encoder is None:
+            self.label_encoder = LabelEncoder().fit(all_labels)
+        else:
+            self.label_encoder = label_encoder
+            
+        self.num_classes = self.label_encoder.num_classes
+    
+    def __len__(self):
+        return len(self.original_dataset)
+        
+    def __getitem__(self, idx):
+        image, caption = self.original_dataset[idx]
+        label = self.label_extractor(caption)
+        label_idx = self.label_encoder.transform([label])[0]
+        
+        # Handle unknown labels
+        if label_idx == -1:
+            print(f"Warning: Unknown label '{label}' encountered. Using fallback class 0.")
+            label_idx = 0
+            
+        return image, label_idx
+    
+    def get_label_encoder(self):
+        return self.label_encoder
 
 # ------------------------------
 # Balanced Batch Sampler for handling class imbalance
@@ -595,7 +705,9 @@ class ViTFineTuner:
         val_loader=None, 
         epochs=10, 
         save_interval=1,
-        eval_interval=1
+        eval_interval=1,
+        resume_from=None,
+        label_encoder=None
     ):
         if self.model is None:
             raise ValueError("Model not initialized. Call setup_model first.")
@@ -612,8 +724,23 @@ class ViTFineTuner:
         best_val_acc = 0.0
         early_stopping_patience = 10
         early_stopping_counter = 0
+        start_epoch = 0
         
-        for epoch in range(epochs):
+        # Resume from checkpoint if specified
+        if resume_from:
+            print(f"Resuming training from checkpoint: {resume_from}")
+            checkpoint = self.load_checkpoint(resume_from)
+            start_epoch = checkpoint.get('epoch', 0) + 1
+            best_val_acc = checkpoint.get('best_val_acc', 0.0)
+            early_stopping_counter = checkpoint.get('early_stopping_counter', 0)
+            
+            # Resume scheduler state if available
+            if 'scheduler_state_dict' in checkpoint:
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            
+            print(f"Resuming from epoch {start_epoch} with best validation accuracy: {best_val_acc:.4f}")
+        
+        for epoch in range(start_epoch, epochs):
             print(f"Epoch {epoch+1}/{epochs}")
             self.model.train()
             train_loss = 0.0
@@ -625,8 +752,9 @@ class ViTFineTuner:
             for batch_idx, (images, labels) in progress_bar:
                 # Convert string labels to numeric if needed
                 if isinstance(labels[0], str):
-                    label_mapping = {label: idx for idx, label in enumerate(set(labels))}
-                    numeric_labels = torch.tensor([label_mapping[label] for label in labels])
+                    if label_encoder is None:
+                        raise ValueError("Label encoder is required for string labels")
+                    numeric_labels = torch.tensor(label_encoder.transform(labels))
                 else:
                     numeric_labels = labels
 
@@ -763,7 +891,7 @@ class ViTFineTuner:
                 if self.use_ema:
                     stored_params = self.ema_model.apply(self.model)
                 
-                val_loss, val_acc, val_f1 = self.evaluate(val_loader)
+                val_loss, val_acc, val_f1 = self.evaluate(val_loader, use_tta=True, label_encoder=label_encoder)
                 print(f"Val Loss: {val_loss:.4f}, Accuracy: {val_acc:.4f}, F1: {val_f1:.4f}")
                 
                 # Restore original model parameters
@@ -781,7 +909,14 @@ class ViTFineTuner:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     early_stopping_counter = 0
-                    self.save_model(os.path.join(self.checkpoint_dir, "best_model.pth"))
+                    self.save_checkpoint(
+                        os.path.join(self.checkpoint_dir, "best_model.pth"),
+                        epoch=epoch,
+                        best_val_acc=best_val_acc,
+                        early_stopping_counter=early_stopping_counter,
+                        scheduler=scheduler,
+                        label_encoder=label_encoder
+                    )
                     print(f"New best model saved with validation accuracy: {val_acc:.4f}")
                 else:
                     early_stopping_counter += 1
@@ -790,18 +925,33 @@ class ViTFineTuner:
                         break
             
             if (epoch + 1) % save_interval == 0:
-                self.save_model(os.path.join(self.checkpoint_dir, f"checkpoint_epoch_{epoch+1}.pth"))
+                self.save_checkpoint(
+                    os.path.join(self.checkpoint_dir, f"checkpoint_epoch_{epoch+1}.pth"),
+                    epoch=epoch,
+                    best_val_acc=best_val_acc,
+                    early_stopping_counter=early_stopping_counter,
+                    scheduler=scheduler,
+                    label_encoder=label_encoder
+                )
             
             scheduler.step()  # Update learning rate scheduler
             gc.collect()
         
-        self.save_model(os.path.join(self.checkpoint_dir, "final_model.pth"))
+        self.save_checkpoint(
+            os.path.join(self.checkpoint_dir, "final_model.pth"),
+            epoch=epochs-1,
+            best_val_acc=best_val_acc,
+            early_stopping_counter=early_stopping_counter,
+            scheduler=scheduler,
+            label_encoder=label_encoder
+        )
+        
         if self.use_wandb:
             wandb.finish()
         
         return best_val_acc
     
-    def evaluate(self, val_loader, use_tta=False):
+    def evaluate(self, val_loader, use_tta=False, label_encoder=None):
         self.model.eval()
         val_loss = 0.0
         all_preds = []
@@ -815,8 +965,9 @@ class ViTFineTuner:
         with torch.no_grad():
             for images, labels in tqdm(val_loader, desc="Validating"):
                 if isinstance(labels[0], str):
-                    label_mapping = {label: idx for idx, label in enumerate(set(labels))}
-                    numeric_labels = torch.tensor([label_mapping[label] for label in labels])
+                    if label_encoder is None:
+                        raise ValueError("Label encoder is required for string labels")
+                    numeric_labels = torch.tensor(label_encoder.transform(labels))
                 else:
                     numeric_labels = labels
                 
@@ -856,26 +1007,45 @@ class ViTFineTuner:
         
         return val_loss, val_acc, val_f1
     
-    def save_model(self, path):
+    def save_checkpoint(self, path, epoch=0, best_val_acc=0.0, early_stopping_counter=0, scheduler=None, label_encoder=None):
+        """Save a comprehensive checkpoint for resuming training"""
+        checkpoint = {
+            'epoch': epoch,
+            'best_val_acc': best_val_acc,
+            'early_stopping_counter': early_stopping_counter,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+        }
+        
+        # Add scheduler state if available
+        if scheduler is not None:
+            checkpoint['scheduler_state_dict'] = scheduler.state_dict()
+        
+        # Add EMA state if available
         if self.use_ema:
-            # Save EMA model
             stored_params = self.ema_model.apply(self.model)
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'ema_state_dict': {k: v.clone() for k, v in self.ema_model.ema.items()}
-            }, path)
+            checkpoint['ema_state_dict'] = {k: v.clone() for k, v in self.ema_model.ema.items()}
             self.ema_model.restore(self.model, stored_params)
-        else:
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-            }, path)
-        print(f"Model saved to {path}")
+        
+        # Save the checkpoint
+        torch.save(checkpoint, path)
+        print(f"Checkpoint saved to {path}")
+        
+        # Save label encoder if provided
+        if label_encoder is not None:
+            encoder_path = os.path.splitext(path)[0] + "_label_encoder.json"
+            label_encoder.save(encoder_path)
+            print(f"Label encoder saved to {encoder_path}")
     
-    def load_model(self, path):
+    def load_checkpoint(self, path):
+        """Load a checkpoint for resuming training"""
+        print(f"Loading checkpoint from {path}")
         checkpoint = torch.load(path, map_location=self.device)
+        
+        # Load model state
         self.model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # Load optimizer state
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
         # Load EMA state if available
@@ -883,20 +1053,28 @@ class ViTFineTuner:
             for name, param in checkpoint['ema_state_dict'].items():
                 self.ema_model.ema[name] = param.to(self.device)
         
-        print(f"Model loaded from {path}")
+        return checkpoint
     
-    def predict(self, test_loader):
+    def save_model(self, path):
+        """Legacy method for backward compatibility"""
+        self.save_checkpoint(path)
+    
+    def load_model(self, path):
+        """Legacy method for backward compatibility"""
+        return self.load_checkpoint(path)
+    
+    def predict(self, test_loader, use_tta=False, label_encoder=None):
         self.model.eval()
         all_preds = []
         all_probs = []
         
         # Setup TTA if enabled
         tta = None
-        if self.use_tta:
+        if use_tta or self.use_tta:
             tta = TestTimeAugmentation(self.model, self.tta_transforms, self.device)
         
         with torch.no_grad():
-            for images, _ in tqdm(test_loader, desc="Predicting"):
+            for images, labels in tqdm(test_loader, desc="Predicting"):
                 images = images.to(self.device)
                 
                 if self.mixed_precision:
@@ -917,6 +1095,11 @@ class ViTFineTuner:
                 all_preds.extend(preds)
                 all_probs.extend(probs.cpu().numpy())
         
+        # Convert numeric predictions to original labels if encoder is provided
+        if label_encoder is not None:
+            original_labels = label_encoder.inverse_transform(all_preds)
+            return np.array(all_preds), np.array(all_probs), original_labels
+        
         return np.array(all_preds), np.array(all_probs)
 
 # ------------------------------
@@ -934,35 +1117,38 @@ def create_train_val_split(dataset, val_ratio=0.2, seed=42):
     train_indices, val_indices = indices[split:], indices[:split]
     return train_indices, val_indices
 
-def convert_caption_dataset_to_classification(dataset, label_extractor=None):
-    if label_extractor is None:
-        def label_extractor(caption):
-            return caption.split()[0]
-    
-    class ClassificationDataset(torch.utils.data.Dataset):
-        def __init__(self, original_dataset, label_extractor):
-            self.original_dataset = original_dataset
-            self.label_extractor = label_extractor
-            all_labels = []
-            for i in range(len(original_dataset)):
-                _, caption = original_dataset[i]
-                label = label_extractor(caption)
-                all_labels.append(label)
-            unique_labels = sorted(set(all_labels))
-            self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
-            self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
-            self.num_classes = len(unique_labels)
+def load_or_create_label_encoder(dataset, label_extractor=None, encoder_path=None):
+    """Load an existing label encoder or create a new one from the dataset"""
+    if encoder_path and os.path.exists(encoder_path):
+        print(f"Loading label encoder from {encoder_path}")
+        label_encoder = LabelEncoder().load(encoder_path)
+    else:
+        print("Creating new label encoder from dataset")
+        if label_extractor is None:
+            def label_extractor(caption):
+                return caption.split()[0]
         
-        def __len__(self):
-            return len(self.original_dataset)
-            
-        def __getitem__(self, idx):
-            image, caption = self.original_dataset[idx]
-            label = self.label_extractor(caption)
-            label_idx = self.label_to_idx[label]
-            return image, label_idx
-            
-    return ClassificationDataset(dataset, label_extractor)
+        # Extract all labels
+        all_labels = []
+        for i in range(len(dataset)):
+            _, caption = dataset[i]
+            label = label_extractor(caption)
+            all_labels.append(label)
+        
+        # Create and fit label encoder
+        label_encoder = LabelEncoder().fit(all_labels)
+        
+        # Save the encoder if path is provided
+        if encoder_path:
+            os.makedirs(os.path.dirname(encoder_path), exist_ok=True)
+            label_encoder.save(encoder_path)
+            print(f"Label encoder saved to {encoder_path}")
+    
+    return label_encoder
+
+def convert_caption_dataset_to_classification(dataset, label_encoder=None, label_extractor=None):
+    """Convert a caption dataset to a classification dataset using a label encoder"""
+    return ClassificationDataset(dataset, label_encoder, label_extractor)
 
 # ------------------------------
 # Example usage
@@ -1007,16 +1193,32 @@ def main():
         cache_size=2000  # Increased cache size
     )
     
-    # Convert to classification dataset if needed
-    # Adjust label_extractor function based on your caption format
+    # Define label extractor function based on your caption format
     def label_extractor(caption):
-        # Example: extract first word as label
+        # Extract the disease type from the caption
+        # Example: "Non Demented Alzheimers" -> "Non"
         return caption.split()[0]
     
+    # Setup paths for label encoder
+    encoder_path = "checkpoints/label_encoder.json"
+    
+    # Load or create label encoder
+    label_encoder = load_or_create_label_encoder(
+        full_dataset,
+        label_extractor=label_extractor,
+        encoder_path=encoder_path
+    )
+    
+    # Convert to classification dataset
     classification_dataset = convert_caption_dataset_to_classification(
         full_dataset, 
+        label_encoder=label_encoder,
         label_extractor=label_extractor
     )
+    
+    # Print class information
+    print(f"Number of classes: {classification_dataset.num_classes}")
+    print(f"Class mapping: {label_encoder.label_to_idx}")
     
     # Split datasets
     train_indices, val_indices = create_train_val_split(
@@ -1059,14 +1261,21 @@ def main():
     )
     
     val_loader = DataLoader(
-    val_dataset,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=num_workers,
-    pin_memory=True,
-    collate_fn=lambda b: collate_fn_with_transform(b, val_transform),
-    persistent_workers=True
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=lambda b: collate_fn_with_transform(b, val_transform),
+        persistent_workers=True
     )
+
+    # Check for existing checkpoints to resume from
+    resume_from = None
+    checkpoint_dir = "checkpoints"
+    if os.path.exists(os.path.join(checkpoint_dir, "best_model.pth")):
+        resume_from = os.path.join(checkpoint_dir, "best_model.pth")
+        print(f"Found existing checkpoint: {resume_from}")
 
     # Initialize the ViT fine-tuner with advanced techniques
     fine_tuner = ViTFineTuner(
@@ -1075,7 +1284,7 @@ def main():
         learning_rate=2e-5,
         mixed_precision=True,
         gradient_accumulation_steps=1,
-        checkpoint_dir="checkpoints",
+        checkpoint_dir=checkpoint_dir,
         use_wandb=True,  # Set to False if not using wandb
         weight_decay=0.01,
         project_name="vit-finetuning",
@@ -1107,30 +1316,48 @@ def main():
     # Setup the model
     fine_tuner.setup_model(num_classes=classification_dataset.num_classes)
 
-    # Train the model
+    # Train the model with resume capability
     best_val_acc = fine_tuner.train(
         train_loader=train_loader,
         val_loader=val_loader,
         epochs=30,
         save_interval=5,
-        eval_interval=1
+        eval_interval=1,
+        resume_from=resume_from,
+        label_encoder=label_encoder
     )
 
     print(f"Training completed. Best validation accuracy: {best_val_acc:.4f}")
 
     # Load the best model for final evaluation
-    fine_tuner.load_model(os.path.join(fine_tuner.checkpoint_dir, "best_model.pth"))
+    fine_tuner.load_checkpoint(os.path.join(fine_tuner.checkpoint_dir, "best_model.pth"))
 
     # Final evaluation with test-time augmentation
-    val_loss, val_acc, val_f1 = fine_tuner.evaluate(val_loader, use_tta=True)
+    val_loss, val_acc, val_f1 = fine_tuner.evaluate(
+        val_loader, 
+        use_tta=True,
+        label_encoder=label_encoder
+    )
     print(f"Final evaluation results:")
     print(f"Validation Loss: {val_loss:.4f}")
     print(f"Validation Accuracy: {val_acc:.4f}")
     print(f"Validation F1 Score: {val_f1:.4f}")
 
+    # Make predictions and convert back to original labels
+    predictions, probabilities, original_labels = fine_tuner.predict(
+        val_loader, 
+        use_tta=True,
+        label_encoder=label_encoder
+    )
+    
+    # Print some example predictions
+    print("\nExample predictions:")
+    for i in range(min(10, len(original_labels))):
+        print(f"Predicted: {original_labels[i]}")
+
     # Close wandb run if it was used
     if fine_tuner.use_wandb:
         wandb.finish()
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()
