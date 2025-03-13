@@ -1283,14 +1283,14 @@ def main():
         csv_path="visionTransformer/new_synthetic_dataset.csv",
         root_dir="",
         transform=None,  # We'll apply transforms later
-        cache_size=2000  # Increased cache size
+        cache_size=100 # Increased cache size
     )
     
     # Define label extractor function based on your caption format
     def label_extractor(caption):
         # Extract the disease type from the caption
         # Example: "Non Demented Alzheimers" -> "Non"
-        return caption.split()[0] if ' ' in caption else caption
+        return caption
     
     # Setup paths for label encoder
     encoder_path = "checkpoints/label_encoder.json"
@@ -1334,7 +1334,7 @@ def main():
     # Create dataloaders with balanced sampling for training
     train_labels = [classification_dataset[i][1] for i in train_indices]
     
-    batch_size = 32
+    batch_size = 64
     num_workers = 4
     
     # Use balanced sampler for training
@@ -1379,7 +1379,7 @@ def main():
         mixed_precision=True,
         gradient_accumulation_steps=1,
         checkpoint_dir=checkpoint_dir,
-        use_wandb=False,  # Set to True if using wandb
+        use_wandb=True,  # Set to True if using wandb
         weight_decay=0.01,
         project_name="vit-finetuning",
         # Advanced training options

@@ -5,6 +5,8 @@ processed/
 profile/
 vit_checkpoints
 wandb
+checkpoints
+label_mappings
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
