@@ -75,8 +75,8 @@ def cutmix_data(x, y, alpha=1.0, device="cuda"):
     # Get bbox for CutMix
     w, h = x.size(2), x.size(3)
     cut_ratio = np.sqrt(1. - lam)
-    cut_w = np.int(w * cut_ratio)
-    cut_h = np.int(h * cut_ratio)
+    cut_w = int(w * cut_ratio)
+    cut_h = int(h * cut_ratio)
     
     cx = np.random.randint(w)
     cy = np.random.randint(h)
@@ -370,7 +370,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
         
         if label_extractor is None:
             def label_extractor(caption):
-                return caption.split()[0]
+                return caption
         
         self.label_extractor = label_extractor
         
@@ -1126,7 +1126,7 @@ def load_or_create_label_encoder(dataset, label_extractor=None, encoder_path=Non
         print("Creating new label encoder from dataset")
         if label_extractor is None:
             def label_extractor(caption):
-                return caption.split()[0]
+                return caption
         
         # Extract all labels
         all_labels = []
