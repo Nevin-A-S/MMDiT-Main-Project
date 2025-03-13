@@ -969,7 +969,8 @@ def convert_caption_dataset_to_classification(dataset, label_extractor=None):
 # ------------------------------
 def main():
     # Set global random seed for reproducibility
-    set_seed(42)
+    # set_seed(42)
+    print("Hello")
     
     # Get image processor for normalization values
     processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
@@ -1058,4 +1059,78 @@ def main():
     )
     
     val_loader = DataLoader(
-        val_dataset
+    val_dataset,
+    batch_size=batch_size,
+    shuffle=False,
+    num_workers=num_workers,
+    pin_memory=True,
+    collate_fn=lambda b: collate_fn_with_transform(b, val_transform),
+    persistent_workers=True
+    )
+
+    # Initialize the ViT fine-tuner with advanced techniques
+    fine_tuner = ViTFineTuner(
+        model_name="google/vit-base-patch16-224-in21k",
+        num_classes=classification_dataset.num_classes,
+        learning_rate=2e-5,
+        mixed_precision=True,
+        gradient_accumulation_steps=1,
+        checkpoint_dir="checkpoints",
+        use_wandb=True,  # Set to False if not using wandb
+        weight_decay=0.01,
+        project_name="vit-finetuning",
+        # Advanced training options
+        use_mixup=True,
+        use_cutmix=True,
+        mixup_alpha=0.4,
+        cutmix_alpha=1.0,
+        use_focal_loss=False,
+        use_label_smoothing=True,
+        label_smoothing=0.1,
+        use_ema=True,
+        ema_decay=0.9999,
+        use_sam_optimizer=True,
+        sam_rho=0.05,
+        warmup_epochs=5,
+        gradient_clip_val=1.0,
+        # Data augmentation options
+        use_randaugment=True,
+        randaugment_n=2,
+        randaugment_m=9,
+        # Regularization options
+        dropout_rate=0.1,
+        balanced_sampling=True,
+        # Test-time augmentation
+        use_tta=True
+    )
+
+    # Setup the model
+    fine_tuner.setup_model(num_classes=classification_dataset.num_classes)
+
+    # Train the model
+    best_val_acc = fine_tuner.train(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        epochs=30,
+        save_interval=5,
+        eval_interval=1
+    )
+
+    print(f"Training completed. Best validation accuracy: {best_val_acc:.4f}")
+
+    # Load the best model for final evaluation
+    fine_tuner.load_model(os.path.join(fine_tuner.checkpoint_dir, "best_model.pth"))
+
+    # Final evaluation with test-time augmentation
+    val_loss, val_acc, val_f1 = fine_tuner.evaluate(val_loader, use_tta=True)
+    print(f"Final evaluation results:")
+    print(f"Validation Loss: {val_loss:.4f}")
+    print(f"Validation Accuracy: {val_acc:.4f}")
+    print(f"Validation F1 Score: {val_f1:.4f}")
+
+    # Close wandb run if it was used
+    if fine_tuner.use_wandb:
+        wandb.finish()
+
+    if __name__ == "__main__":
+        main()
