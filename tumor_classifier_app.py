@@ -14,7 +14,7 @@ sys.path.append(".")
 from visionTransformer.vitTrain import ViTFineTuner, LabelEncoder
 
 st.set_page_config(
-    page_title="Tumor Classification",
+    page_title="MRI Disease Classification",
     page_icon="🔬",
     layout="wide"
 )
@@ -171,8 +171,8 @@ def predict(fine_tuner, image_tensor, label_encoder=None):
     return predicted_label, confidence.item(), all_probs
 
 def main():
-    st.title("Tumor Classification")
-    st.write("Upload an image to classify the type of tumor")
+    st.title("MRI Disease Classification")
+    st.write("Upload an image to classify the MRI")
     
     # Sidebar for model selection
     st.sidebar.title("Model Configuration")
@@ -231,12 +231,12 @@ def main():
         
         with col2:
             st.subheader("Prediction Results")
-            st.write(f"**Predicted Tumor Type:** {predicted_label}")
+            st.write(f"**Predicted Type:** {predicted_label}")
             st.write(f"**Confidence:** {confidence:.2%}")
             
             st.progress(confidence)
             
-            if confidence < 0.5:
+            if confidence < 0.1:
                 st.warning("Low confidence prediction. Consider using a different image or model.")
             elif confidence > 0.8:
                 st.success("High confidence prediction.")
