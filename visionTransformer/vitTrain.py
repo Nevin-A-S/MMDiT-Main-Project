@@ -18,8 +18,6 @@ from torch.cuda.amp import autocast, GradScaler
 from sklearn.metrics import accuracy_score, f1_score
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import ViTForImageClassification, ViTConfig, ViTImageProcessor
-import json
-import datetime
 
 class ImageCaptionDataset(Dataset):
     def __init__(self, csv_path: str, root_dir: str, transform=None, cache_size: int = 1000):
@@ -130,10 +128,6 @@ class ViTFineTuner:
         self.optimizer = None
         self.criterion = None
         self.scaler = GradScaler() if mixed_precision else None
-        
-        # Label mapping
-        self.label_to_idx = None
-        self.idx_to_label = None
         
         if self.use_wandb:
             wandb.init(project=project_name)
@@ -305,9 +299,9 @@ class ViTFineTuner:
                 
                 if self.use_wandb:
                     wandb.log({
-                        'val_loss': val_loss,
-                        'val_acc': val_acc,
-                        'val_f1': val_f1
+                        'test_loss': val_loss,
+                        'test_acc': val_acc,
+                        'test_f1': val_f1
                     })
                 
                 # Save best model
@@ -391,17 +385,6 @@ class ViTFineTuner:
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
         }, path)
-        
-        # Save label mapping if available
-        if hasattr(self, 'label_to_idx') and self.label_to_idx is not None:
-            label_map_path = path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
-            with open(label_map_path, 'w') as f:
-                json.dump({
-                    'label_to_idx': self.label_to_idx,
-                    'idx_to_label': self.idx_to_label
-                }, f, indent=4)
-            print(f"Label mapping saved to {label_map_path}")
-            
         print(f"Model saved to {path}")
     
     def load_model(self, path):
@@ -414,17 +397,6 @@ class ViTFineTuner:
         checkpoint = torch.load(path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        
-        # Try to load label mapping
-        label_map_path = path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
-        if os.path.exists(label_map_path):
-            with open(label_map_path, 'r') as f:
-                label_map = json.load(f)
-                # Convert string keys back to integers for idx_to_label
-                self.label_to_idx = label_map['label_to_idx']
-                self.idx_to_label = {int(k): v for k, v in label_map['idx_to_label'].items()}
-            print(f"Label mapping loaded from {label_map_path}")
-        
         print(f"Model loaded from {path}")
     
     def predict(self, test_loader):
@@ -460,93 +432,37 @@ class ViTFineTuner:
         
         return np.array(all_preds), np.array(all_probs)
 
-# Additional helper functions for adapting caption dataset to classification task
-def convert_caption_dataset_to_classification(dataset, label_extractor=None):
-    """
-    Convert a caption dataset to a classification dataset.
-    
-    Args:
-        dataset: Original ImageCaptionDataset
-        label_extractor: Function to extract label from caption
-        
-    Returns:
-        ClassificationDataset: Dataset for classification tasks
-    """
-    # Example label extractor - you would need to customize this
-    # based on how your captions relate to class labels
-    if label_extractor is None:
-        def label_extractor(caption):
-            # Example: extract first word of caption as class
-            return caption
-    
-    class ClassificationDataset(torch.utils.data.Dataset):
-        def __init__(self, original_dataset, label_extractor):
-            self.original_dataset = original_dataset
-            self.label_extractor = label_extractor
-            
-            # Create label mapping
-            all_labels = []
-            for i in range(len(original_dataset)):
-                _, caption = original_dataset[i]
-                label = label_extractor(caption)
-                all_labels.append(label)
-            
-            unique_labels = sorted(set(all_labels))
-            self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
-            self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
-            self.num_classes = len(unique_labels)
-            
-            # Save label mapping to a file for future reference
-            os.makedirs("label_mappings", exist_ok=True)
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            mapping_file = f"label_mappings/label_mapping_{timestamp}.json"
-            with open(mapping_file, 'w') as f:
-                json.dump({
-                    'label_to_idx': self.label_to_idx,
-                    'idx_to_label': {str(k): v for k, v in self.idx_to_label.items()}
-                }, f, indent=4)
-            print(f"Label mapping saved to {mapping_file}")
-        
-        def __len__(self):
-            return len(self.original_dataset)
-            
-        def __getitem__(self, idx):
-            image, caption = self.original_dataset[idx]
-            label = self.label_extractor(caption)
-            label_idx = self.label_to_idx[label]
-            return image, label_idx
-    
-    return ClassificationDataset(dataset, label_extractor)
-
+# Function to create train/validation split
 def create_train_val_split(dataset, val_ratio=0.2, seed=42):
     """
-    Create train/validation split indices.
+    Split dataset into training and validation sets.
     
     Args:
-        dataset: Dataset to split
-        val_ratio: Ratio of validation set size
+        dataset: PyTorch Dataset
+        val_ratio: Validation set ratio
         seed: Random seed for reproducibility
         
     Returns:
-        train_indices, val_indices: Lists of indices for train and validation sets
+        train_indices, val_indices: Indices for train and validation sets
     """
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(val_ratio * dataset_size))
     
-    np.random.seed(seed)
-    np.random.shuffle(indices)
+    random.seed(seed)
+    random.shuffle(indices)
     
     train_indices, val_indices = indices[split:], indices[:split]
     
     return train_indices, val_indices
 
+# Memory-efficient subset sampler
 class SubsetSampler(torch.utils.data.Sampler):
     def __init__(self, indices):
         self.indices = indices
         
     def __iter__(self):
-        return iter(self.indices)
+        return (i for i in self.indices)
         
     def __len__(self):
         return len(self.indices)
@@ -575,7 +491,7 @@ def main():
 
     
     # Dataset parameters
-    batch_size = 64  # Adjust based on VRAM
+    batch_size = 32  # Adjust based on VRAM
     num_workers = 4  # Adjust based on CPU cores
     
     full_dataset = ImageCaptionDataset(
@@ -585,23 +501,12 @@ def main():
             cache_size=1000 
         )
     
-    # Convert to classification dataset if needed
-    # Define a custom label extractor if needed
-    def custom_label_extractor(caption):
-        # Extract tumor type from caption
-        # This is just an example - modify based on your data
-        return caption.split()[0]  # Assuming first word is the tumor type
-    
-    classification_dataset = convert_caption_dataset_to_classification(
-        full_dataset, 
-        label_extractor=custom_label_extractor
-    )
     # Create train/val split
-    train_indices, val_indices = create_train_val_split(classification_dataset, val_ratio=0.1)
+    train_indices, val_indices = create_train_val_split(full_dataset, val_ratio=0.1)
     
     # Create train and validation dataloaders
     train_loader = DataLoader(
-        Subset(classification_dataset, train_indices),
+        Subset(full_dataset, train_indices),
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
@@ -610,7 +515,7 @@ def main():
     )
 
     val_loader = DataLoader(
-        Subset(classification_dataset, val_indices),
+        Subset(full_dataset, val_indices),
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
@@ -619,8 +524,11 @@ def main():
     )
 
     
-    # Get number of classes from the dataset
-    num_classes = classification_dataset.num_classes
+    # Count number of unique classes in your dataset
+    # Adapt this according to how your labels are stored
+    # For this example, assuming labels are the captions, we'd need to modify this
+    # num_classes = len(set([label for _, label in full_dataset]))
+    num_classes = 10  # Replace with actual number of classes
     
     # Initialize fine-tuner
     fine_tuner = ViTFineTuner(
@@ -636,10 +544,6 @@ def main():
     # Setup model with number of classes
     fine_tuner.setup_model(num_classes=num_classes)
     
-    # Pass the label mapping to the fine-tuner
-    fine_tuner.label_to_idx = classification_dataset.label_to_idx
-    fine_tuner.idx_to_label = classification_dataset.idx_to_label
-    
     # Train model
     fine_tuner.train(
         train_loader=train_loader,
@@ -654,3 +558,51 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Additional helper functions for adapting caption dataset to classification task
+
+def convert_caption_dataset_to_classification(dataset, label_extractor=None):
+    """
+    Convert a caption dataset to a classification dataset.
+    
+    Args:
+        dataset: Original ImageCaptionDataset
+        label_extractor: Function to extract label from caption
+        
+    Returns:
+        ClassificationDataset: Dataset for classification tasks
+    """
+    # Example label extractor - you would need to customize this
+    # based on how your captions relate to class labels
+    if label_extractor is None:
+        def label_extractor(caption):
+            # Example: extract first word of caption as class
+            return caption.split()[0]
+    
+    class ClassificationDataset(torch.utils.data.Dataset):
+        def __init__(self, original_dataset, label_extractor):
+            self.original_dataset = original_dataset
+            self.label_extractor = label_extractor
+            
+            # Create label mapping
+            all_labels = []
+            for i in range(len(original_dataset)):
+                _, caption = original_dataset[i]
+                label = label_extractor(caption)
+                all_labels.append(label)
+            
+            unique_labels = sorted(set(all_labels))
+            self.label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
+            self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
+            self.num_classes = len(unique_labels)
+        
+        def __len__(self):
+            return len(self.original_dataset)
+            
+        def __getitem__(self, idx):
+            image, caption = self.original_dataset[idx]
+            label = self.label_extractor(caption)
+            label_idx = self.label_to_idx[label]
+            return image, label_idx
+            
+    return ClassificationDataset(dataset, label_extractor)
