@@ -15,7 +15,7 @@ import torch.optim as optim
 from typing import Dict, Tuple, List, Optional, Union, Any
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, Subset
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.optim.lr_scheduler import CosineAnnealingLR, _LRScheduler
 from transformers import ViTForImageClassification, ViTConfig, ViTImageProcessor
@@ -229,11 +229,18 @@ class SAM(torch.optim.Optimizer):
     def step(self, closure=None):
         assert closure is not None, "Sharpness Aware Minimization requires closure, but it was not provided"
         
-        closure = torch.enable_grad()(closure)  # the closure should do a full forward-backward pass
+        # The closure should do a full forward-backward pass
+        closure = torch.enable_grad()(closure)
         
+        # First forward-backward pass
+        loss = closure()
         self.first_step(zero_grad=True)
+        
+        # Second forward-backward pass
         closure()
         self.second_step()
+        
+        return loss
     
     def _grad_norm(self):
         shared_device = self.param_groups[0]["params"][0].device  # put everything on the same device, in case of model parallelism
@@ -772,9 +779,10 @@ class ViTFineTuner:
                 
                 # SAM optimizer requires a closure
                 if self.use_sam_optimizer:
+                    # Define closure for SAM optimizer
                     def closure():
                         self.optimizer.zero_grad()
-                        with autocast(enabled=self.mixed_precision):
+                        with autocast(device_type='cuda', enabled=self.mixed_precision):
                             outputs = self.model(images).logits
                             if do_mixup or do_cutmix:
                                 loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
@@ -788,15 +796,10 @@ class ViTFineTuner:
                             loss.backward()
                         return loss
                     
-                    # First step of SAM
+                    # For SAM with mixed precision, we need a custom approach
                     if self.mixed_precision:
-                        with autocast():
-                            loss = closure()
-                        self.scaler.unscale_(self.optimizer)
-                        self.optimizer.first_step(zero_grad=True)
-                        
-                        # Second forward-backward pass
-                        with autocast():
+                        # First forward-backward pass
+                        with autocast(device_type='cuda'):
                             outputs = self.model(images).logits
                             if do_mixup or do_cutmix:
                                 loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
@@ -805,19 +808,37 @@ class ViTFineTuner:
                             loss = loss / self.gradient_accumulation_steps
                         
                         self.scaler.scale(loss).backward()
+                        
+                        # First step of SAM (perturb weights)
+                        self.scaler.unscale_(self.optimizer)
+                        self.optimizer.first_step(zero_grad=True)
+                        
+                        # Second forward-backward pass
+                        with autocast(device_type='cuda'):
+                            outputs = self.model(images).logits
+                            if do_mixup or do_cutmix:
+                                loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
+                            else:
+                                loss = self.criterion(outputs, numeric_labels)
+                            loss = loss / self.gradient_accumulation_steps
+                        
+                        self.scaler.scale(loss).backward()
+                        
+                        # Second step of SAM (update weights)
+                        self.scaler.unscale_(self.optimizer)
                         self.optimizer.second_step(zero_grad=True)
-                        self.scaler.step(self.optimizer)
+                        
+                        # Update scaler
+                        self.scaler.step(self.optimizer.base_optimizer)
                         self.scaler.update()
                     else:
-                        loss = closure()
-                        self.optimizer.first_step(zero_grad=True)
-                        closure()
-                        self.optimizer.second_step(zero_grad=True)
+                        # Standard SAM optimization without mixed precision
+                        self.optimizer.step(closure)
                 else:
                     # Standard optimization
                     self.optimizer.zero_grad()
                     if self.mixed_precision:
-                        with autocast():
+                        with autocast(device_type='cuda'):
                             outputs = self.model(images).logits
                             if do_mixup or do_cutmix:
                                 loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
@@ -975,7 +996,7 @@ class ViTFineTuner:
                 numeric_labels = numeric_labels.to(self.device)
                 
                 if self.mixed_precision:
-                    with autocast():
+                    with autocast(device_type='cuda'):
                         if tta:
                             probs = tta(images)
                             outputs = torch.log(probs)  # Convert to logits
@@ -1078,7 +1099,7 @@ class ViTFineTuner:
                 images = images.to(self.device)
                 
                 if self.mixed_precision:
-                    with autocast():
+                    with autocast(device_type='cuda'):
                         if tta:
                             probs = tta(images)
                         else:
