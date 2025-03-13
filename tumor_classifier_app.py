@@ -10,7 +10,7 @@ import json
 
 import sys
 sys.path.append(".")
-from visionTransformer.vitTrain import ViTFineTuner
+from visionTransformer.vitTrain import ViTFineTuner, LabelEncoder
 
 st.set_page_config(
     page_title="Tumor Classification",
@@ -30,69 +30,47 @@ def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", 
         
     Returns:
         model: Loaded model
-        idx_to_label: Dictionary mapping from index to label
+        label_encoder: Label encoder for class mapping
     """
-    # Check if label mapping file exists
-    label_map_path = checkpoint_path.replace('.pt', '_label_map.json').replace('.pth', '_label_map.json')
-    idx_to_label = None
+    # Check if label encoder file exists
+    label_encoder_path = checkpoint_path.replace('.pth', '_label_encoder.json')
+    label_encoder = None
     
-    if os.path.exists(label_map_path):
+    if os.path.exists(label_encoder_path):
         try:
-            with open(label_map_path, 'r') as f:
-                label_map = json.load(f)
-                # Convert string keys back to integers for idx_to_label
-                idx_to_label = {int(k): v for k, v in label_map['idx_to_label'].items()}
-            st.sidebar.success(f"Label mapping loaded from {os.path.basename(label_map_path)}")
+            label_encoder = LabelEncoder().load(label_encoder_path)
+            st.sidebar.success(f"Label encoder loaded from {os.path.basename(label_encoder_path)}")
+            # If num_classes wasn't specified, get it from the label encoder
+            if num_classes is None:
+                num_classes = label_encoder.num_classes
         except Exception as e:
-            st.sidebar.warning(f"Error loading label mapping: {str(e)}")
+            st.sidebar.warning(f"Error loading label encoder: {str(e)}")
+    
+    # If num_classes is still None, use a default value
+    if num_classes is None:
+        num_classes = 3  # Default to 3 classes
+        st.sidebar.warning(f"Using default number of classes: {num_classes}")
     
     # Initialize the ViTFineTuner
     fine_tuner = ViTFineTuner(
         model_name=model_name,
         num_classes=num_classes,
-        mixed_precision=False  # Disable mixed precision for inference
+        mixed_precision=False,  # Disable mixed precision for inference
+        use_wandb=False  # Disable wandb for inference
     )
     
     # Setup the model
     fine_tuner.setup_model(num_classes=num_classes)
     
     # Load the model checkpoint
-    fine_tuner.load_model(checkpoint_path)
+    try:
+        checkpoint = fine_tuner.load_checkpoint(checkpoint_path)
+        st.sidebar.success(f"Model checkpoint loaded successfully")
+    except Exception as e:
+        st.sidebar.error(f"Error loading model checkpoint: {str(e)}")
+        raise e
     
-    # If we loaded a label mapping from the file, use it
-    if idx_to_label is not None:
-        fine_tuner.idx_to_label = idx_to_label
-    # Otherwise, check if the model has a label mapping
-    elif hasattr(fine_tuner, 'idx_to_label') and fine_tuner.idx_to_label is not None:
-        idx_to_label = fine_tuner.idx_to_label
-    # If no label mapping is available, create a default one
-    else:
-        # If not available, create a mapping with common tumor types
-        tumor_types = [
-            "Meningioma",
-            "Glioma",
-            "Pituitary Tumor",
-            "Astrocytoma",
-            "Oligodendroglioma",
-            "Ependymoma",
-            "Medulloblastoma",
-            "Schwannoma",
-            "Lymphoma",
-            "Metastatic Tumor"
-        ]
-        
-        # If num_classes is less than the length of tumor_types, truncate the list
-        if num_classes < len(tumor_types):
-            tumor_types = tumor_types[:num_classes]
-        
-        # If num_classes is greater than the length of tumor_types, add generic labels
-        elif num_classes > len(tumor_types):
-            for i in range(len(tumor_types), num_classes):
-                tumor_types.append(f"Tumor Type {i+1}")
-        
-        idx_to_label = {i: tumor_types[i] for i in range(num_classes)}
-    
-    return fine_tuner, idx_to_label
+    return fine_tuner, label_encoder
 
 def preprocess_image(image):
     """
@@ -117,18 +95,19 @@ def preprocess_image(image):
     
     return transform(image).unsqueeze(0)  
 
-def predict(fine_tuner, image_tensor, idx_to_label):
+def predict(fine_tuner, image_tensor, label_encoder=None):
     """
     Make predictions on an image.
     
     Args:
         fine_tuner: ViTFineTuner instance
         image_tensor: Preprocessed image tensor
-        idx_to_label: Dictionary mapping from index to label
+        label_encoder: Label encoder for class mapping
         
     Returns:
         prediction: Predicted class
         confidence: Prediction confidence
+        all_probs: All class probabilities
     """
     device = fine_tuner.device
     model = fine_tuner.model
@@ -142,9 +121,17 @@ def predict(fine_tuner, image_tensor, idx_to_label):
         probabilities = torch.nn.functional.softmax(outputs, dim=1)
         confidence, predicted_class = torch.max(probabilities, dim=1)
     
-    predicted_label = idx_to_label[predicted_class.item()]
+    # Convert to numpy for easier handling
+    all_probs = probabilities[0].cpu().numpy()
+    predicted_idx = predicted_class.item()
     
-    return predicted_label, confidence.item()
+    # Convert predicted index to label if label encoder is available
+    if label_encoder is not None:
+        predicted_label = label_encoder.inverse_transform([predicted_idx])[0]
+    else:
+        predicted_label = f"Class {predicted_idx}"
+    
+    return predicted_label, confidence.item(), all_probs
 
 def main():
     st.title("Tumor Classification")
@@ -154,51 +141,41 @@ def main():
     st.sidebar.title("Model Configuration")
     
     # Get available checkpoint files
-    checkpoint_dir = "vit_checkpoints"
-    if os.path.exists(checkpoint_dir):
-        checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.endswith('.pt') or f.endswith('.pth')]
-    else:
-        checkpoint_files = []
+    checkpoint_dirs = ["checkpoints", "vit_checkpoints"]
+    checkpoint_files = []
+    
+    for checkpoint_dir in checkpoint_dirs:
+        if os.path.exists(checkpoint_dir):
+            for f in os.listdir(checkpoint_dir):
+                if f.endswith('.pth') and not f.endswith('_label_encoder.json'):
+                    checkpoint_files.append(os.path.join(checkpoint_dir, f))
     
     if not checkpoint_files:
-        st.error("No model checkpoints found in the 'vit_checkpoints' directory. Please train a model first.")
+        st.error("No model checkpoints found in the 'checkpoints' or 'vit_checkpoints' directories. Please train a model first.")
         return
     
     # Model selection
     selected_checkpoint = st.sidebar.selectbox(
         "Select Model Checkpoint",
-        checkpoint_files
+        checkpoint_files,
+        format_func=lambda x: os.path.basename(x)
     )
     
-    # Number of classes
-    num_classes = st.sidebar.number_input("Number of Classes", min_value=2, value=10)
-    
     # Load the model
-    checkpoint_path = os.path.join(checkpoint_dir, selected_checkpoint)
-    
     try:
-        fine_tuner, idx_to_label = load_model(checkpoint_path, num_classes=num_classes)
-        st.sidebar.success(f"Model loaded successfully: {selected_checkpoint}")
+        fine_tuner, label_encoder = load_model(selected_checkpoint)
+        st.sidebar.success(f"Model loaded successfully: {os.path.basename(selected_checkpoint)}")
+        
+        # Display class mapping if available
+        if label_encoder is not None:
+            st.sidebar.subheader("Class Mapping")
+            for idx, label in label_encoder.idx_to_label.items():
+                st.sidebar.write(f"Class {idx}: {label}")
+        else:
+            st.sidebar.warning("No label encoder found. Class indices will be displayed instead of labels.")
     except Exception as e:
         st.sidebar.error(f"Error loading model: {str(e)}")
         return
-    
-    # Custom class mapping
-    st.sidebar.subheader("Class Mapping")
-    use_loaded_mapping = st.sidebar.checkbox("Use loaded label mapping", value=True)
-    
-    if not use_loaded_mapping:
-        st.sidebar.write("Enter custom class names:")
-        custom_class_names = {}
-        for i in range(num_classes):
-            default_name = idx_to_label.get(i, f"Tumor Type {i+1}")
-            custom_class_names[i] = st.sidebar.text_input(f"Class {i} name", value=default_name)
-        idx_to_label = custom_class_names
-    
-    # Display class mapping
-    st.sidebar.subheader("Current Class Mapping")
-    for idx, label in idx_to_label.items():
-        st.sidebar.write(f"Class {idx}: {label}")
     
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
     
@@ -213,7 +190,7 @@ def main():
         image_tensor = preprocess_image(image)
         
         with st.spinner("Classifying..."):
-            predicted_label, confidence = predict(fine_tuner, image_tensor, idx_to_label)
+            predicted_label, confidence, all_probs = predict(fine_tuner, image_tensor, label_encoder)
         
         with col2:
             st.subheader("Prediction Results")
@@ -226,6 +203,19 @@ def main():
                 st.warning("Low confidence prediction. Consider using a different image or model.")
             elif confidence > 0.8:
                 st.success("High confidence prediction.")
+            
+            # Display all class probabilities
+            st.subheader("All Class Probabilities")
+            
+            if label_encoder is not None:
+                for idx, prob in enumerate(all_probs):
+                    label = label_encoder.inverse_transform([idx])[0]
+                    st.write(f"{label}: {prob:.2%}")
+                    st.progress(float(prob))
+            else:
+                for idx, prob in enumerate(all_probs):
+                    st.write(f"Class {idx}: {prob:.2%}")
+                    st.progress(float(prob))
 
 if __name__ == "__main__":
     main() 
