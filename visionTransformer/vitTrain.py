@@ -777,28 +777,14 @@ class ViTFineTuner:
                 elif do_cutmix:
                     images, targets_a, targets_b, lam = cutmix_data(images, numeric_labels, self.cutmix_alpha, device=self.device)
                 
-                # SAM optimizer requires a closure
+                # SAM optimizer requires special handling
                 if self.use_sam_optimizer:
-                    # Define closure for SAM optimizer
-                    def closure():
-                        self.optimizer.zero_grad()
-                        with autocast(device_type='cuda', enabled=self.mixed_precision):
-                            outputs = self.model(images).logits
-                            if do_mixup or do_cutmix:
-                                loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
-                            else:
-                                loss = self.criterion(outputs, numeric_labels)
-                            loss = loss / self.gradient_accumulation_steps
-                        
-                        if self.mixed_precision:
-                            self.scaler.scale(loss).backward()
-                        else:
-                            loss.backward()
-                        return loss
-                    
-                    # For SAM with mixed precision, we need a custom approach
+                    # For SAM with mixed precision, we need a completely custom approach
                     if self.mixed_precision:
-                        # First forward-backward pass
+                        # Zero gradients to start
+                        self.optimizer.zero_grad()
+                        
+                        # First forward pass
                         with autocast(device_type='cuda'):
                             outputs = self.model(images).logits
                             if do_mixup or do_cutmix:
@@ -807,13 +793,14 @@ class ViTFineTuner:
                                 loss = self.criterion(outputs, numeric_labels)
                             loss = loss / self.gradient_accumulation_steps
                         
+                        # First backward pass
                         self.scaler.scale(loss).backward()
                         
                         # First step of SAM (perturb weights)
                         self.scaler.unscale_(self.optimizer)
                         self.optimizer.first_step(zero_grad=True)
                         
-                        # Second forward-backward pass
+                        # Second forward pass
                         with autocast(device_type='cuda'):
                             outputs = self.model(images).logits
                             if do_mixup or do_cutmix:
@@ -822,17 +809,28 @@ class ViTFineTuner:
                                 loss = self.criterion(outputs, numeric_labels)
                             loss = loss / self.gradient_accumulation_steps
                         
-                        self.scaler.scale(loss).backward()
+                        # Second backward pass
+                        loss.backward()
                         
                         # Second step of SAM (update weights)
-                        self.scaler.unscale_(self.optimizer)
                         self.optimizer.second_step(zero_grad=True)
                         
-                        # Update scaler
-                        self.scaler.step(self.optimizer.base_optimizer)
+                        # We don't use the scaler for the second step since we've already unscaled
+                        # Just update the scaler state
                         self.scaler.update()
                     else:
                         # Standard SAM optimization without mixed precision
+                        def closure():
+                            self.optimizer.zero_grad()
+                            outputs = self.model(images).logits
+                            if do_mixup or do_cutmix:
+                                loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
+                            else:
+                                loss = self.criterion(outputs, numeric_labels)
+                            loss = loss / self.gradient_accumulation_steps
+                            loss.backward()
+                            return loss
+                        
                         self.optimizer.step(closure)
                 else:
                     # Standard optimization
