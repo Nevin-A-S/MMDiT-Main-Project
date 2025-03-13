@@ -654,34 +654,41 @@ class ViTFineTuner:
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
         
         # Set different learning rates for different parts of the model
+        # Use a lower learning rate when using SAM optimizer to improve stability
+        base_lr = self.learning_rate
+        if self.use_sam_optimizer:
+            base_lr = self.learning_rate * 0.5  # Reduce learning rate for SAM
+            print(f"Using reduced learning rate for SAM optimizer: {base_lr}")
+        
         optimizer_grouped_parameters = [
             # Attention & hidden layers
             {'params': [p for n, p in param_optimizer if 'encoder.layer' in n and not any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate, 'weight_decay': self.weight_decay},
+             'lr': base_lr, 'weight_decay': self.weight_decay},
             {'params': [p for n, p in param_optimizer if 'encoder.layer' in n and any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate, 'weight_decay': 0.0},
+             'lr': base_lr, 'weight_decay': 0.0},
             
             # Embedding layers
             {'params': [p for n, p in param_optimizer if 'embeddings' in n and not any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate * 0.1, 'weight_decay': self.weight_decay},
+             'lr': base_lr * 0.1, 'weight_decay': self.weight_decay},
             {'params': [p for n, p in param_optimizer if 'embeddings' in n and any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate * 0.1, 'weight_decay': 0.0},
+             'lr': base_lr * 0.1, 'weight_decay': 0.0},
             
             # Classification head (highest learning rate)
             {'params': [p for n, p in param_optimizer if 'classifier' in n and not any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate * 10, 'weight_decay': self.weight_decay},
+             'lr': base_lr * 10, 'weight_decay': self.weight_decay},
             {'params': [p for n, p in param_optimizer if 'classifier' in n and any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate * 10, 'weight_decay': 0.0},
+             'lr': base_lr * 10, 'weight_decay': 0.0},
             
             # Everything else
             {'params': [p for n, p in param_optimizer if not any(x in n for x in ['encoder.layer', 'embeddings', 'classifier']) and not any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate, 'weight_decay': self.weight_decay},
+             'lr': base_lr, 'weight_decay': self.weight_decay},
             {'params': [p for n, p in param_optimizer if not any(x in n for x in ['encoder.layer', 'embeddings', 'classifier']) and any(nd in n for nd in no_decay)],
-             'lr': self.learning_rate, 'weight_decay': 0.0}
+             'lr': base_lr, 'weight_decay': 0.0}
         ]
         
         # Use SAM optimizer or standard AdamW
         if self.use_sam_optimizer:
+            print("Using SAM optimizer with AdamW base")
             self.optimizer = SAM(
                 optimizer_grouped_parameters,
                 base_optimizer=optim.AdamW,
@@ -777,8 +784,10 @@ class ViTFineTuner:
                 elif do_cutmix:
                     images, targets_a, targets_b, lam = cutmix_data(images, numeric_labels, self.cutmix_alpha, device=self.device)
                 
-                # SAM optimizer requires special handling
-                if self.use_sam_optimizer:
+                # Disable SAM optimizer for the first few epochs to stabilize training
+                use_sam_this_batch = self.use_sam_optimizer and epoch >= 2
+                
+                if use_sam_this_batch:
                     # For SAM with mixed precision, we need a completely custom approach
                     if self.mixed_precision:
                         # Zero gradients to start
@@ -793,30 +802,68 @@ class ViTFineTuner:
                                 loss = self.criterion(outputs, numeric_labels)
                             loss = loss / self.gradient_accumulation_steps
                         
+                        # Check for NaN loss and skip this batch if found
+                        if torch.isnan(loss).any() or torch.isinf(loss).any():
+                            print(f"Warning: NaN or Inf loss detected in batch {batch_idx}. Skipping batch.")
+                            continue
+                        
                         # First backward pass
                         self.scaler.scale(loss).backward()
                         
                         # First step of SAM (perturb weights)
                         self.scaler.unscale_(self.optimizer)
+                        
+                        # Check for NaN gradients
+                        has_nan_grad = False
+                        for param in self.model.parameters():
+                            if param.grad is not None:
+                                if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                                    has_nan_grad = True
+                                    break
+                        
+                        if has_nan_grad:
+                            print(f"Warning: NaN or Inf gradient detected in batch {batch_idx}. Skipping SAM steps.")
+                            # Skip SAM steps but still update with regular optimizer
+                            self.optimizer.base_optimizer.step()
+                            self.optimizer.zero_grad()
+                            self.scaler.update()
+                            continue
+                        
+                        # Apply SAM first step
                         self.optimizer.first_step(zero_grad=True)
                         
-                        # Second forward pass
-                        with autocast(device_type='cuda'):
-                            outputs = self.model(images).logits
-                            if do_mixup or do_cutmix:
-                                loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
-                            else:
-                                loss = self.criterion(outputs, numeric_labels)
-                            loss = loss / self.gradient_accumulation_steps
+                        # Second forward pass with no autocast to avoid mixed precision issues
+                        outputs = self.model(images).logits
+                        if do_mixup or do_cutmix:
+                            loss = mixup_criterion(self.criterion, outputs, targets_a, targets_b, lam)
+                        else:
+                            loss = self.criterion(outputs, numeric_labels)
+                        loss = loss / self.gradient_accumulation_steps
+                        
+                        # Check for NaN loss again
+                        if torch.isnan(loss).any() or torch.isinf(loss).any():
+                            print(f"Warning: NaN or Inf loss detected in second forward pass. Skipping batch.")
+                            continue
                         
                         # Second backward pass
                         loss.backward()
                         
+                        # Check for NaN gradients again
+                        has_nan_grad = False
+                        for param in self.model.parameters():
+                            if param.grad is not None:
+                                if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                                    has_nan_grad = True
+                                    break
+                        
+                        if has_nan_grad:
+                            print(f"Warning: NaN or Inf gradient detected in second backward pass. Skipping second SAM step.")
+                            continue
+                        
                         # Second step of SAM (update weights)
                         self.optimizer.second_step(zero_grad=True)
                         
-                        # We don't use the scaler for the second step since we've already unscaled
-                        # Just update the scaler state
+                        # Update scaler state
                         self.scaler.update()
                     else:
                         # Standard SAM optimization without mixed precision
@@ -828,10 +875,20 @@ class ViTFineTuner:
                             else:
                                 loss = self.criterion(outputs, numeric_labels)
                             loss = loss / self.gradient_accumulation_steps
+                            
+                            # Check for NaN loss
+                            if torch.isnan(loss).any() or torch.isinf(loss).any():
+                                return loss.detach()  # Return detached loss to avoid NaN propagation
+                            
                             loss.backward()
                             return loss
                         
-                        self.optimizer.step(closure)
+                        loss = self.optimizer.step(closure)
+                        
+                        # Check if loss is NaN and skip if it is
+                        if torch.isnan(loss).any() or torch.isinf(loss).any():
+                            print(f"Warning: NaN or Inf loss detected in batch {batch_idx}. Skipping batch.")
+                            continue
                 else:
                     # Standard optimization
                     self.optimizer.zero_grad()
@@ -843,6 +900,11 @@ class ViTFineTuner:
                             else:
                                 loss = self.criterion(outputs, numeric_labels)
                             loss = loss / self.gradient_accumulation_steps
+                        
+                        # Check for NaN loss
+                        if torch.isnan(loss).any() or torch.isinf(loss).any():
+                            print(f"Warning: NaN or Inf loss detected in batch {batch_idx}. Skipping batch.")
+                            continue
                         
                         self.scaler.scale(loss).backward()
                         
@@ -861,6 +923,12 @@ class ViTFineTuner:
                         else:
                             loss = self.criterion(outputs, numeric_labels)
                         loss = loss / self.gradient_accumulation_steps
+                        
+                        # Check for NaN loss
+                        if torch.isnan(loss).any() or torch.isinf(loss).any():
+                            print(f"Warning: NaN or Inf loss detected in batch {batch_idx}. Skipping batch.")
+                            continue
+                        
                         loss.backward()
                         
                         # Apply gradient clipping
@@ -874,7 +942,9 @@ class ViTFineTuner:
                 if self.use_ema and (batch_idx + 1) % self.gradient_accumulation_steps == 0:
                     self.ema_model.update(self.model)
                 
-                train_loss += loss.item() * self.gradient_accumulation_steps
+                # Only add non-NaN losses to the running average
+                if not torch.isnan(loss).any() and not torch.isinf(loss).any():
+                    train_loss += loss.item() * self.gradient_accumulation_steps
                 
                 # For training metrics, we only consider the non-mixup case for simplicity
                 if not do_mixup and not do_cutmix:
@@ -887,7 +957,11 @@ class ViTFineTuner:
                 if batch_idx % 10 == 0:
                     torch.cuda.empty_cache()
             
-            train_loss /= len(train_loader)
+            # Compute average loss, handling the case where all batches might have been skipped
+            if len(train_loader) > 0:
+                train_loss /= len(train_loader)
+            else:
+                train_loss = float('nan')
             
             # Only compute metrics if we have predictions
             if len(all_preds) > 0:
@@ -1174,7 +1248,7 @@ def convert_caption_dataset_to_classification(dataset, label_encoder=None, label
 # ------------------------------
 def main():
     # Set global random seed for reproducibility
-    # set_seed(42)
+    set_seed(42)
     print("Hello")
     
     # Get image processor for normalization values
@@ -1216,7 +1290,7 @@ def main():
     def label_extractor(caption):
         # Extract the disease type from the caption
         # Example: "Non Demented Alzheimers" -> "Non"
-        return caption
+        return caption.split()[0] if ' ' in caption else caption
     
     # Setup paths for label encoder
     encoder_path = "checkpoints/label_encoder.json"
@@ -1297,19 +1371,20 @@ def main():
         print(f"Found existing checkpoint: {resume_from}")
 
     # Initialize the ViT fine-tuner with advanced techniques
+    # Use a more stable configuration to avoid NaN issues
     fine_tuner = ViTFineTuner(
         model_name="google/vit-base-patch16-224-in21k",
         num_classes=classification_dataset.num_classes,
-        learning_rate=2e-5,
+        learning_rate=1e-5,  # Lower learning rate for stability
         mixed_precision=True,
         gradient_accumulation_steps=1,
         checkpoint_dir=checkpoint_dir,
-        use_wandb=True,  # Set to False if not using wandb
+        use_wandb=False,  # Set to True if using wandb
         weight_decay=0.01,
         project_name="vit-finetuning",
         # Advanced training options
-        use_mixup=True,
-        use_cutmix=True,
+        use_mixup=False,  # Disable mixup initially for stability
+        use_cutmix=False,  # Disable cutmix initially for stability
         mixup_alpha=0.4,
         cutmix_alpha=1.0,
         use_focal_loss=False,
@@ -1317,7 +1392,7 @@ def main():
         label_smoothing=0.1,
         use_ema=True,
         ema_decay=0.9999,
-        use_sam_optimizer=True,
+        use_sam_optimizer=False,  # Disable SAM initially for stability
         sam_rho=0.05,
         warmup_epochs=5,
         gradient_clip_val=1.0,
