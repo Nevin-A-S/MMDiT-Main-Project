@@ -1218,7 +1218,7 @@ def main():
     def label_extractor(caption):
         # Extract the disease type from the caption
         # Example: "Non Demented Alzheimers" -> "Non"
-        return caption.split()[0]
+        return caption
     
     # Setup paths for label encoder
     encoder_path = "checkpoints/label_encoder.json"
