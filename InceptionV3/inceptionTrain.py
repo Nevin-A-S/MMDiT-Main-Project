@@ -21,7 +21,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, _LRScheduler
 from transformers import ViTForImageClassification, ViTConfig, ViTImageProcessor
 import timm
 from timm.data.auto_augment import rand_augment_transform
-from tqdm import tqdm
+from torchvision.models import inception_v3
 
 # Set random seeds for reproducibility
 def set_seed(seed=42):
@@ -367,7 +367,6 @@ class LabelEncoder:
         self.num_classes = data["num_classes"]
         self.is_fitted = data["is_fitted"]
         
-        print(f"LabelEncoder loaded from {path}.")
         return self
 
 # ------------------------------
@@ -384,9 +383,8 @@ class ClassificationDataset(torch.utils.data.Dataset):
         self.label_extractor = label_extractor
         
         # Extract all labels
-        print("Creating Classification Dataset...")
         all_labels = []
-        for i in tqdm(range(len(original_dataset))):
+        for i in range(len(original_dataset)):
             _, caption = original_dataset[i]
             label = label_extractor(caption)
             all_labels.append(label)
@@ -396,8 +394,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
             self.label_encoder = LabelEncoder().fit(all_labels)
         else:
             self.label_encoder = label_encoder
-        print("Classification Dataset created ")
-
+            
         self.num_classes = self.label_encoder.num_classes
     
     def __len__(self):
@@ -540,7 +537,7 @@ class ViTFineTuner:
         learning_rate=2e-5, 
         mixed_precision=True,
         gradient_accumulation_steps=1,
-        checkpoint_dir="vit-l-checkpoints",
+        checkpoint_dir="checkpoints",
         use_wandb=False,
         weight_decay=0.01,
         project_name="vit-finetuning",
@@ -1227,7 +1224,7 @@ def load_or_create_label_encoder(dataset, label_extractor=None, encoder_path=Non
         
         # Extract all labels
         all_labels = []
-        for i in tqdm(range(len(dataset))):
+        for i in range(len(dataset)):
             _, caption = dataset[i]
             label = label_extractor(caption)
             all_labels.append(label)
@@ -1253,7 +1250,7 @@ def convert_caption_dataset_to_classification(dataset, label_encoder=None, label
 def main():
     # Set global random seed for reproducibility
     set_seed(42)
-    # print("Hello")
+    print("Hello")
     
     # Get image processor for normalization values
     processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
@@ -1270,7 +1267,7 @@ def main():
         transforms.RandomVerticalFlip(p=0.1),
         transforms.RandomRotation(15),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        RandAugment(n=2, m=9),  # Apply RandAugment after basic augmentations
+        RandAugment(n=2, m=9), 
         transforms.ToTensor(),
         transforms.Normalize(mean=image_mean, std=image_std, inplace=True),
     ])
@@ -1284,10 +1281,10 @@ def main():
     
     # Create dataset
     full_dataset = ImageCaptionDataset(
-        csv_path="visionTransformer/new_synthetic_dataset.csv",
+        csv_path="Inceptionv3/new_synthetic_dataset.csv",
         root_dir="",
-        transform=None,  # We'll apply transforms later
-        cache_size=100 # Increased cache size
+        transform=None, 
+        cache_size=100 
     )
     
     # Define label extractor function based on your caption format
@@ -1297,7 +1294,7 @@ def main():
         return caption
     
     # Setup paths for label encoder
-    encoder_path = "vit-l-checkpoints/label_encoder.json"
+    encoder_path = "inceptionv3Checkpoints/label_encoder.json"
     
     # Load or create label encoder
     label_encoder = load_or_create_label_encoder(
@@ -1318,7 +1315,6 @@ def main():
     print(f"Class mapping: {label_encoder.label_to_idx}")
     
     # Split datasets
-    print("Spliting dataset into train and validation sets...")
     train_indices, val_indices = create_train_val_split(
         classification_dataset, 
         val_ratio=0.15,  # Slightly smaller validation set
@@ -1326,7 +1322,6 @@ def main():
     )
     
     # Create train and validation datasets with different transforms
-    print("Creating train and validation datasets...")
     train_dataset = Subset(classification_dataset, train_indices)
     val_dataset = Subset(classification_dataset, val_indices)
     
@@ -1340,7 +1335,7 @@ def main():
     # Create dataloaders with balanced sampling for training
     train_labels = [classification_dataset[i][1] for i in train_indices]
     
-    batch_size = 16
+    batch_size = 64
     num_workers = 4
     
     # Use balanced sampler for training
@@ -1371,50 +1366,15 @@ def main():
 
     # Check for existing checkpoints to resume from
     resume_from = None
-    checkpoint_dir = "vit-l-checkpoints"
+    checkpoint_dir = "inceptionv3Checkpoints"
     if os.path.exists(os.path.join(checkpoint_dir, "best_model.pth")):
         resume_from = os.path.join(checkpoint_dir, "best_model.pth")
         print(f"Found existing checkpoint: {resume_from}")
 
     # Initialize the ViT fine-tuner with advanced techniques
     # Use a more stable configuration to avoid NaN issues
-    # fine_tuner = ViTFineTuner(
-    #     model_name="google/vit-base-patch16-224-in21k",
-    #     num_classes=classification_dataset.num_classes,
-    #     learning_rate=1e-5,  # Lower learning rate for stability
-    #     mixed_precision=True,
-    #     gradient_accumulation_steps=1,
-    #     checkpoint_dir=checkpoint_dir,
-    #     use_wandb=True,  # Set to True if using wandb
-    #     weight_decay=0.01,
-    #     project_name="vit-finetuning",
-    #     # Advanced training options
-    #     use_mixup=False,  # Disable mixup initially for stability
-    #     use_cutmix=False,  # Disable cutmix initially for stability
-    #     mixup_alpha=0.4,
-    #     cutmix_alpha=1.0,
-    #     use_focal_loss=False,
-    #     use_label_smoothing=True,
-    #     label_smoothing=0.1,
-    #     use_ema=True,
-    #     ema_decay=0.9999,
-    #     use_sam_optimizer=False,  # Disable SAM initially for stability
-    #     sam_rho=0.05,
-    #     warmup_epochs=5,
-    #     gradient_clip_val=1.0,
-    #     # Data augmentation options
-    #     use_randaugment=True,
-    #     randaugment_n=2,
-    #     randaugment_m=9,
-    #     # Regularization options
-    #     dropout_rate=0.1,
-    #     balanced_sampling=True,
-    #     # Test-time augmentation
-    #     use_tta=True
-    # )
-
     fine_tuner = ViTFineTuner(
-        model_name="google/vit-large-patch16-224-in21k",
+        model_name="google/vit-base-patch16-224-in21k",
         num_classes=classification_dataset.num_classes,
         learning_rate=1e-5,  # Lower learning rate for stability
         mixed_precision=True,
@@ -1422,7 +1382,7 @@ def main():
         checkpoint_dir=checkpoint_dir,
         use_wandb=True,  # Set to True if using wandb
         weight_decay=0.01,
-        project_name="vit-L-finetuning",
+        project_name="vit-finetuning",
         # Advanced training options
         use_mixup=False,  # Disable mixup initially for stability
         use_cutmix=False,  # Disable cutmix initially for stability

@@ -1,0 +1,28 @@
+{
+  "label_to_idx": {
+    "Brain Sclerosis": 0,
+    "Brain Tumor": 1,
+    "Glioma Tumor": 2,
+    "Meningioma tumour": 3,
+    "Mild Demented Alzheimers": 4,
+    "Moderate Demented Alzheimers": 5,
+    "No Disease": 6,
+    "Non Demented Alzheimers": 7,
+    "Pituitary Tumor": 8,
+    "Very Mild Demented Alzheimers": 9
+  },
+  "idx_to_label": {
+    "0": "Brain Sclerosis",
+    "1": "Brain Tumor",
+    "2": "Glioma Tumor",
+    "3": "Meningioma tumour",
+    "4": "Mild Demented Alzheimers",
+    "5": "Moderate Demented Alzheimers",
+    "6": "No Disease",
+    "7": "Non Demented Alzheimers",
+    "8": "Pituitary Tumor",
+    "9": "Very Mild Demented Alzheimers"
+  },
+  "num_classes": 10,
+  "is_fitted": true
+}

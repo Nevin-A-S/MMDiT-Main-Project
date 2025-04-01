@@ -47,6 +47,9 @@ def load_model(checkpoint_path, model_name="google/vit-base-patch16-224-in21k", 
     label_encoder = None
     
     if os.path.exists(label_encoder_path):
+
+        print(f"Loading label encoder from {label_encoder_path}")   
+
         try:
             label_encoder = LabelEncoder().load(label_encoder_path)
             st.sidebar.success(f"Label encoder loaded from {os.path.basename(label_encoder_path)}")
