@@ -29,14 +29,14 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger("PyTorch_ResNet50_Classifier")
+logger = logging.getLogger("PyTorch_DenseNet_Classifier")
 
 # Config parameters (hyperparameters)
 CONFIG = {
     "csv_path": "visionTransformer/new_synthetic_dataset.csv",  # Path to your CSV file
-    "img_height": 224,  # ResNet50 default input height
-    "img_width": 224,   # ResNet50 default input width
-    "batch_size": 64,   # Batch size hyperparameter
+    "img_height": 224,  # DenseNet default input height
+    "img_width": 224,   # DenseNet default input width
+    "batch_size": 256,   # Batch size hyperparameter
     "epochs": 50,       # Number of epochs hyperparameter
     "fine_tune_epochs": 30,  # Number of fine-tuning epochs
     "learning_rate": 0.0001,
@@ -47,11 +47,12 @@ CONFIG = {
     "dropout_rate": 0.5,
     "early_stopping_patience": 5,
     "weight_decay": 1e-4,
-    "model_checkpoint_dir": "resnet-model_checkpoints",
+    "model_checkpoint_dir": "Dense-net-model-checkpoints",
     "final_model_path": "final_model",
-    "wandb_project": "resnet50_classifier_pytorch",  # WandB project name
+    "densenet_version": "201",  # Options: 121, 161, 169, 201
+    "wandb_project": "densenet_classifier_pytorch",  # WandB project name
     "wandb_entity": None,  # Your WandB username (None will use default)
-    "wandb_tags": ["resnet50", "pytorch", "image-classification"],
+    "wandb_tags": ["densenet", "pytorch", "image-classification"],
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu")
 }
 
@@ -68,7 +69,7 @@ def setup_wandb():
     )
     
     # Log the model architecture as a graph
-    wandb.run.name = f"resnet50_bs{CONFIG['batch_size']}_e{CONFIG['epochs']}_lr{CONFIG['learning_rate']}"
+    wandb.run.name = f"densenet_{CONFIG['densenet_version']}_bs{CONFIG['batch_size']}_e{CONFIG['epochs']}_lr{CONFIG['learning_rate']}"
     
     logger.info(f"WandB initialized with run name: {wandb.run.name}")
     logger.info(f"Using device: {CONFIG['device']}")
@@ -225,19 +226,29 @@ def create_data_loaders(train_df, val_df, test_df):
     return train_loader, val_loader, test_loader, idx_to_class
 
 def build_model():
-    """Build a ResNet50 model fine-tuned for the classification task."""
-    logger.info("Building ResNet50 model")
+    """Build a DenseNet model fine-tuned for the classification task."""
+    logger.info(f"Building DenseNet-{CONFIG['densenet_version']} model")
     
-    # Load pre-trained ResNet50 model
-    model = models.resnet50(pretrained=True)
+    # Load pre-trained DenseNet model
+    if CONFIG['densenet_version'] == '121':
+        model = models.densenet121(pretrained=True)
+    elif CONFIG['densenet_version'] == '161':
+        model = models.densenet161(pretrained=True)
+    elif CONFIG['densenet_version'] == '169':
+        model = models.densenet169(pretrained=True)
+    elif CONFIG['densenet_version'] == '201':
+        model = models.densenet201(pretrained=True)
+    else:
+        logger.warning(f"Invalid DenseNet version specified. Defaulting to 121.")
+        model = models.densenet121(pretrained=True)
     
     # Freeze base model parameters
     for param in model.parameters():
         param.requires_grad = False
     
-    # Replace the final fully connected layer
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Sequential(
+    # Replace the final classifier layer
+    num_ftrs = model.classifier.in_features
+    model.classifier = nn.Sequential(
         nn.Dropout(p=CONFIG["dropout_rate"]),
         nn.Linear(num_ftrs, CONFIG["num_classes"])
     )
@@ -410,11 +421,15 @@ def fine_tune_model(model, train_loader, val_loader, criterion):
     logger.info("Starting fine-tuning phase")
     
     # Unfreeze the last few layers of the base model
-    # For ResNet50, we'll unfreeze the last layer4 block
+    # For DenseNet, we'll unfreeze the last dense block
     for name, child in model.named_children():
-        if name == 'layer4':
-            for param in child.parameters():
-                param.requires_grad = True
+        if name == 'features':
+            # DenseNet structure: conv0, norm0, relu0, pool0, denseblock1, transition1, ...
+            # Unfreeze the last denseblock (typically denseblock4)
+            for i, (child_name, grandchild) in enumerate(child.named_children()):
+                if 'denseblock' in child_name and i >= len(list(child.named_children())) - 2:
+                    for param in grandchild.parameters():
+                        param.requires_grad = True
     
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
@@ -580,7 +595,7 @@ def save_model_artifacts(model, idx_to_class):
 def main():
     """Main function to orchestrate the training pipeline."""
     try:
-        logger.info("Starting PyTorch ResNet50 classification training pipeline")
+        logger.info("Starting PyTorch DenseNet classification training pipeline")
         
         # Set up necessary directories
         setup_directories()
